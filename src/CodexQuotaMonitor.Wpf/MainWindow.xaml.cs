@@ -187,6 +187,7 @@ public partial class MainWindow : Window
     {
         _hwnd = new WindowInteropHelper(this).Handle;
         NativeMethods.ApplyOverlayStyles(_hwnd);
+        NativeMethods.AttachToTaskbar(_hwnd);
         if (!NativeMethods.EnableFrostedBackdrop(_hwnd))
         {
             _logger.Warning("native frosted backdrop is unavailable; using translucent WPF fallback");
@@ -501,6 +502,11 @@ public partial class MainWindow : Window
 
     private void SnapToTaskbar()
     {
+        if (_hwnd != IntPtr.Zero)
+        {
+            NativeMethods.AttachToTaskbar(_hwnd);
+        }
+
         var placement = ResolveTaskbarPlacement(_settings.WindowWidth);
         if (_hwnd == IntPtr.Zero)
         {

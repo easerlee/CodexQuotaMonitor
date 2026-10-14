@@ -8,6 +8,8 @@ public static class NativeMethods
     public const int ABM_GETTASKBARPOS = 5;
     public const int SM_CXSCREEN = 0;
     public const int SM_CYSCREEN = 1;
+    public const int GWLP_HWNDPARENT = -8;
+    public const uint GW_OWNER = 4;
     public const int GWL_EXSTYLE = -20;
     public const int GA_ROOT = 2;
     public const int SW_SHOWNOACTIVATE = 4;
@@ -218,6 +220,24 @@ public static class NativeMethods
 
         left = rect.Left;
         return true;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    // Owning the overlay to the taskbar keeps it composited directly above the shell, so
+    // clicking the taskbar cannot cover it for a frame (the shell raises itself above
+    // unowned topmost windows until the next topmost re-assert).
+    public static void AttachToTaskbar(IntPtr hwnd)
+    {
+        hwnd = RootWindow(hwnd);
+        var taskbar = FindWindowW("Shell_TrayWnd", null);
+        if (taskbar == IntPtr.Zero || GetWindow(hwnd, GW_OWNER) == taskbar)
+        {
+            return;
+        }
+
+        SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, taskbar);
     }
 
     public static void SetWindowLongPtr(IntPtr hwnd, int index, nint value)
