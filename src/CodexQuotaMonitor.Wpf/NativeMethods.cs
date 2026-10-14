@@ -6,6 +6,8 @@ namespace CodexQuotaMonitor.Wpf;
 public static class NativeMethods
 {
     public const int ABM_GETTASKBARPOS = 5;
+    public const int SM_CXSCREEN = 0;
+    public const int SM_CYSCREEN = 1;
     public const int GWL_EXSTYLE = -20;
     public const int GA_ROOT = 2;
     public const int SW_SHOWNOACTIVATE = 4;
@@ -82,6 +84,9 @@ public static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
 
@@ -156,7 +161,63 @@ public static class NativeMethods
         var result = SHAppBarMessage(ABM_GETTASKBARPOS, ref data);
         edge = data.uEdge;
         rect = data.rc;
-        return result != 0 && rect.Width > 0 && rect.Height > 0;
+        if (result != 0 && rect.Width > 0 && rect.Height > 0)
+        {
+            return true;
+        }
+
+        // ABM_GETTASKBARPOS round-trips through the shell and can fail (shell restarting,
+        // restricted or elevated process). The taskbar window itself still has geometry.
+        var taskbar = FindWindowW("Shell_TrayWnd", null);
+        if (taskbar == IntPtr.Zero || !GetWindowRect(taskbar, out rect) || rect.Width <= 0 || rect.Height <= 0)
+        {
+            edge = 0;
+            rect = default;
+            return false;
+        }
+
+        edge = InferEdge(rect);
+        return true;
+    }
+
+    private static uint InferEdge(RECT taskbar)
+    {
+        if (taskbar.Width >= taskbar.Height)
+        {
+            return taskbar.Top + taskbar.Height / 2 < GetSystemMetrics(SM_CYSCREEN) / 2
+                ? TaskbarPlacementCalculator.EdgeTop
+                : TaskbarPlacementCalculator.EdgeBottom;
+        }
+
+        return taskbar.Left + taskbar.Width / 2 < GetSystemMetrics(SM_CXSCREEN) / 2
+            ? TaskbarPlacementCalculator.EdgeLeft
+            : TaskbarPlacementCalculator.EdgeRight;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindWindowW(string? lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindWindowExW(IntPtr hWndParent, IntPtr hWndChildAfter, string? lpszClass, string? lpszWindow);
+
+    // Left edge of the notification area (tray icons + clock) on the primary taskbar.
+    public static bool TryGetTrayLeftEdge(out int left)
+    {
+        left = 0;
+        var taskbar = FindWindowW("Shell_TrayWnd", null);
+        if (taskbar == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var tray = FindWindowExW(taskbar, IntPtr.Zero, "TrayNotifyWnd", null);
+        if (tray == IntPtr.Zero || !GetWindowRect(tray, out var rect) || rect.Width <= 0 || rect.Height <= 0)
+        {
+            return false;
+        }
+
+        left = rect.Left;
+        return true;
     }
 
     public static void SetWindowLongPtr(IntPtr hwnd, int index, nint value)

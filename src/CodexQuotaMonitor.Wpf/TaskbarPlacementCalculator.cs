@@ -2,10 +2,13 @@ namespace CodexQuotaMonitor.Wpf;
 
 public static class TaskbarPlacementCalculator
 {
-    private const uint EdgeLeft = 0;
-    private const uint EdgeTop = 1;
-    private const uint EdgeRight = 2;
-    private const uint EdgeBottom = 3;
+    public const uint EdgeLeft = 0;
+    public const uint EdgeTop = 1;
+    public const uint EdgeRight = 2;
+    public const uint EdgeBottom = 3;
+
+    // Gap between the overlay and the notification area, matching the tray spacing.
+    public const int TrayGap = 8;
 
     public static TaskbarPlacement Compute(
         uint edge,
@@ -13,12 +16,21 @@ public static class TaskbarPlacementCalculator
         int preferredWidth,
         int fallbackHeight,
         int screenWidth,
-        int screenHeight)
+        int screenHeight,
+        int trayLeftEdge = 0)
     {
         if (edge is EdgeTop or EdgeBottom && taskbar.Width > 0 && taskbar.Height > 0)
         {
             var width = Math.Min(Math.Max(1, preferredWidth), taskbar.Width);
-            return Clamp(new TaskbarPlacement(taskbar.Left, taskbar.Top, width, taskbar.Height), screenWidth, screenHeight);
+
+            // Sit immediately left of the notification area so a left-aligned taskbar
+            // keeps its Start button clear. Fall back to the taskbar's own left edge
+            // when the tray geometry is unknown or leaves no room.
+            var x = trayLeftEdge > taskbar.Left + width + TrayGap
+                ? trayLeftEdge - width - TrayGap
+                : taskbar.Left;
+
+            return Clamp(new TaskbarPlacement(x, taskbar.Top, width, taskbar.Height), screenWidth, screenHeight);
         }
 
         // A vertical taskbar has no meaningful horizontal "taskbar height". Keep the

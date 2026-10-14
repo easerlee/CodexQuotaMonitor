@@ -135,7 +135,7 @@ public partial class MainWindow : Window
         };
         _menu.AutoClose = true;
         _menu.Items.Add("Refresh now", null, (_, _) => RefreshNow());
-        _menu.Items.Add("Snap to taskbar left", null, (_, _) => SnapToTaskbar());
+        _menu.Items.Add("Snap beside tray icons", null, (_, _) => SnapToTaskbar());
         _menu.Items.Add(new Forms.ToolStripMenuItem(_settings.NoTray ? "Tray icon: off" : "Tray icon: on") { Enabled = false });
         _menu.Items.Add(new Forms.ToolStripSeparator());
 
@@ -528,13 +528,15 @@ public partial class MainWindow : Window
             (int)SystemParameters.PrimaryScreenHeight);
         if (NativeMethods.TryGetTaskbarRect(out var edge, out var rect))
         {
+            var trayLeft = NativeMethods.TryGetTrayLeftEdge(out var left) ? left : 0;
             return TaskbarPlacementCalculator.Compute(
                 edge,
                 rect,
                 preferredWidth,
                 Constants.DefaultHeight,
                 bounds.Width,
-                bounds.Height);
+                bounds.Height,
+                trayLeft);
         }
 
         return TaskbarPlacementCalculator.Fallback(preferredWidth, Constants.DefaultHeight, bounds.Width, bounds.Height);

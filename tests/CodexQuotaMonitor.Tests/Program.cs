@@ -141,6 +141,12 @@ static void TestTaskbarPlacement()
     var verticalRect = new NativeMethods.RECT { Left = 0, Top = 0, Right = 48, Bottom = 1080 };
     var vertical = TaskbarPlacementCalculator.Compute(0, verticalRect, 260, 48, 1920, 1080);
     Equal(new TaskbarPlacement(0, 1032, 260, 48), vertical, "vertical taskbar fallback");
+
+    var trayAnchored = TaskbarPlacementCalculator.Compute(3, bottomRect, 260, 48, 1920, 1080, 1500);
+    Equal(new TaskbarPlacement(1232, 1032, 260, 48), trayAnchored, "bottom taskbar anchored left of tray");
+
+    var noRoomForTrayAnchor = TaskbarPlacementCalculator.Compute(3, bottomRect, 260, 48, 1920, 1080, 100);
+    Equal(new TaskbarPlacement(0, 1032, 260, 48), noRoomForTrayAnchor, "tray anchor falls back to taskbar left");
 }
 
 static void TestArguments()
