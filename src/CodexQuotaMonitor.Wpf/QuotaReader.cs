@@ -80,6 +80,7 @@ public sealed class QuotaReader
         startInfo.Environment["CODEX_HOME"] = _codexHome;
 
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("failed to start app-server");
+        var errorOutput = process.StandardError.ReadToEndAsync();
         try
         {
             await SendAsync(process, 0, "initialize", new
@@ -96,10 +97,26 @@ public sealed class QuotaReader
             ThrowIfRpcError(response);
             return response.RootElement.GetProperty("result").Clone();
         }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(await WithStderrAsync(ex, errorOutput).ConfigureAwait(false), ex);
+        }
         finally
         {
             StopProcess(process);
         }
+    }
+
+    // app-server reports its startup problems on stderr only, so surface them in the log.
+    private static async Task<string> WithStderrAsync(Exception ex, Task<string> errorOutput)
+    {
+        if (await Task.WhenAny(errorOutput, Task.Delay(500)).ConfigureAwait(false) != errorOutput)
+        {
+            return ex.Message;
+        }
+
+        var stderr = (await errorOutput.ConfigureAwait(false)).Trim();
+        return string.IsNullOrEmpty(stderr) ? ex.Message : $"{ex.Message}: {stderr}";
     }
 
     private static async Task SendAsync(Process process, int id, string method, object? parameters, CancellationToken cancellationToken)
