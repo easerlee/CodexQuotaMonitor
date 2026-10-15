@@ -5,6 +5,9 @@ public static class Constants
     public const string AppName = "Codex Quota Monitor Native";
     public const string WindowTitlePrefix = "Codex Quota Monitor Native";
     public const string MutexName = "Local\\CodexQuotaMonitorNative";
+
+    // Installed per-user on this machine; falls back to a plain monospace font.
+    public const string UiFont = "YaHei Consolas Hybrid, Consolas, Segoe UI";
     public const int DefaultQuotaIntervalSeconds = 180;
 
     // Three rows: the 5H and WK bars, then the "15:33 / 5d 7h" line with the state light.

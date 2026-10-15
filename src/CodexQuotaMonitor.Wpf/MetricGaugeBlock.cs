@@ -73,7 +73,7 @@ public sealed class MetricGaugeBlock : FrameworkElement
             text,
             CultureInfo.CurrentUICulture,
             System.Windows.FlowDirection.LeftToRight,
-            new Typeface(new FontFamily("Segoe UI Variable Text"), FontStyles.Normal, weight, FontStretches.Normal),
+            new Typeface(new FontFamily(Constants.UiFont), FontStyles.Normal, weight, FontStretches.Normal),
             size,
             brush,
             dpi);

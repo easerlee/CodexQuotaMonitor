@@ -64,7 +64,7 @@ public partial class MainWindow : Window
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Foreground = new SolidColorBrush(Formatting.PrimaryText),
-            FontFamily = new System.Windows.Media.FontFamily("Segoe UI Variable Text, Segoe UI")
+            FontFamily = new System.Windows.Media.FontFamily(Constants.UiFont)
         };
         Grid.SetRow(_resetText, 2);
         RootGrid.Children.Add(_resetText);

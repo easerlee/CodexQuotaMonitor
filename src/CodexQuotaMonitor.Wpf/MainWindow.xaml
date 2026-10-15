@@ -13,7 +13,7 @@
         Topmost="True"
         Icon="Assets/CodexQuotaMonitor.ico"
         Background="#01FFFFFF"
-        FontFamily="Segoe UI Variable Text, Segoe UI"
+        FontFamily="YaHei Consolas Hybrid, Consolas, Segoe UI"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
