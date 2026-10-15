@@ -36,7 +36,7 @@
             BorderBrush="Transparent"
             BorderThickness="1">
         <Grid>
-            <Grid x:Name="RootGrid" Margin="3,2,3,2" />
+            <Grid x:Name="RootGrid" Margin="3,1,3,1" />
         </Grid>
     </Border>
 </Window>

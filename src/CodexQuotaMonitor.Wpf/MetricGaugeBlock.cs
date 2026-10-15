@@ -49,8 +49,10 @@ public sealed class MetricGaugeBlock : FrameworkElement
             return;
         }
 
-        var barHeight = Math.Clamp(height * 0.42, 4.0, 7.0);
-        var barTop = (height - barHeight) / 2;
+        // Whole-pixel geometry: the rows are 14px on a 48px taskbar, so rounding here lands
+        // both rows on the same pixel grid and their antialiasing stays identical.
+        var barHeight = Math.Round(Math.Clamp(height * 0.42, 4.0, 7.0));
+        var barTop = Math.Round((height - barHeight) / 2);
         const double radius = 3.0;
         dc.DrawRoundedRectangle(track, null, new Rect(barLeft, barTop, barWidth, barHeight), radius, radius);
 

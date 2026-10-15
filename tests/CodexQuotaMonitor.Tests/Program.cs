@@ -204,7 +204,7 @@ static void TestBarGeometry()
 {
     // Card is 116px wide; its inner grid is 116 - 2 (border/margin) - 6 (grid margin) = 106.
     const double rowWidth = 106;
-    const double rowHeight = (48 - 4 - 4) / 3.0; // window minus border/margins, three rows
+    const double rowHeight = (48 - 2 - 2 - 2) / 3.0; // 48px card minus border/margins -> 14px rows
 
     var (left, right) = MetricGaugeBlock.BarGeometry(rowWidth, rowHeight);
     Equal(106.0 - 2, right, "bar right edge matches the state light");
