@@ -202,11 +202,26 @@ public static class NativeMethods
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr FindWindowExW(IntPtr hWndParent, IntPtr hWndChildAfter, string? lpszClass, string? lpszWindow);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassNameW(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    public static IntPtr TaskbarWindow() => FindWindowW("Shell_TrayWnd", null);
+
+    public static string WindowClassName(IntPtr hwnd)
+    {
+        var buffer = new StringBuilder(256);
+        var length = GetClassNameW(hwnd, buffer, buffer.Capacity);
+        return length <= 0 ? string.Empty : buffer.ToString(0, length);
+    }
+
     // Left edge of the notification area (tray icons + clock) on the primary taskbar.
     public static bool TryGetTrayLeftEdge(out int left)
     {
         left = 0;
-        var taskbar = FindWindowW("Shell_TrayWnd", null);
+        var taskbar = TaskbarWindow();
         if (taskbar == IntPtr.Zero)
         {
             return false;

@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private bool _quotaPendingRefresh;
     private bool _menuVisible;
     private bool _mouseButtonWasDown;
+    private bool _hiddenForFullscreen;
     private bool _isExiting;
 
     public MainWindow(AppPaths paths, CliOptions options, AppSettings settings, SimpleLogger logger)
@@ -72,21 +73,21 @@ public partial class MainWindow : Window
         return block;
     }
 
-    // The separator reads like an exclamation mark: a 2px line in the card's own colour,
-    // a 2px gap, then a 2px square whose colour reports the reading state.
+    // The separator reads like an exclamation mark: a 3px line in the card's own colour,
+    // a 3px gap, then a 3px square whose colour reports the reading state.
     private Border AddStatusLight(int column)
     {
         var stack = new Grid
         {
-            Width = 2,
+            Width = 3,
             Margin = new Thickness(0, 5, 0, 5),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
             IsHitTestVisible = false
         };
         stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2) });
-        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2) });
+        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
 
         var line = new Border { Background = new SolidColorBrush(Formatting.ColorFromHex("#38FFFFFF")) };
         Grid.SetRow(line, 0);
@@ -107,7 +108,7 @@ public partial class MainWindow : Window
         _tickTimer.Start();
 
         _topmostTimer.Interval = TimeSpan.FromMilliseconds(500);
-        _topmostTimer.Tick += (_, _) => ForceTopmost();
+        _topmostTimer.Tick += (_, _) => UpdateOverlayVisibility();
         _topmostTimer.Start();
 
         _placementTimer.Interval = TimeSpan.FromSeconds(1);
@@ -427,6 +428,50 @@ public partial class MainWindow : Window
         }
     }
 
+    // The overlay belongs to the taskbar strip: it stays with the taskbar and gets out of
+    // the way while a fullscreen application owns the screen.
+    private void UpdateOverlayVisibility()
+    {
+        if (IsFullscreenForeground())
+        {
+            if (!_hiddenForFullscreen)
+            {
+                _hiddenForFullscreen = true;
+                Hide();
+            }
+            return;
+        }
+
+        if (_hiddenForFullscreen)
+        {
+            _hiddenForFullscreen = false;
+            Show();
+            SnapToTaskbar();
+        }
+
+        ForceTopmost();
+    }
+
+    private bool IsFullscreenForeground()
+    {
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (foreground == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var root = NativeMethods.RootWindow(foreground);
+        if (root == _hwnd || !NativeMethods.GetWindowRect(root, out var rect))
+        {
+            return false;
+        }
+
+        return FullscreenDetector.IsFullscreen(
+            NativeMethods.WindowClassName(root),
+            rect,
+            Forms.Screen.FromHandle(root).Bounds);
+    }
+
     private void ForceTopmost()
     {
         if (_menuVisible)
@@ -444,6 +489,13 @@ public partial class MainWindow : Window
 
     private void SnapToTaskbar()
     {
+        // While parked for a fullscreen app the placement timer must not move or re-show
+        // the window, not even when the taskbar itself disappears.
+        if (_hiddenForFullscreen)
+        {
+            return;
+        }
+
         if (_hwnd != IntPtr.Zero)
         {
             NativeMethods.AttachToTaskbar(_hwnd);

@@ -9,6 +9,7 @@ var tests = new (string Name, Action Body)[]
     ("formatting helpers", TestFormatting),
     ("taskbar overlay placement", TestTaskbarPlacement),
     ("autostart registry Run entry", TestAutostartRegistration),
+    ("fullscreen detection", TestFullscreenDetector),
     ("argument handling", TestArguments)
 };
 
@@ -175,6 +176,20 @@ static void TestAutostartRegistration()
     {
         StartupRegistration.SetEnabled(false, logger, scratch);
     }
+}
+
+static void TestFullscreenDetector()
+{
+    var screen = new System.Drawing.Rectangle(0, 0, 3440, 1440);
+    var coversMonitor = new NativeMethods.RECT { Left = 0, Top = 0, Right = 3440, Bottom = 1440 };
+    var stopsAboveTaskbar = new NativeMethods.RECT { Left = 0, Top = 0, Right = 3440, Bottom = 1392 };
+
+    Equal(true, FullscreenDetector.IsFullscreen("HwndWrapper[Game.exe;;guid]", coversMonitor, screen), "fullscreen app");
+    Equal(false, FullscreenDetector.IsFullscreen("HwndWrapper[App.exe;;guid]", stopsAboveTaskbar, screen), "maximised window");
+    Equal(false, FullscreenDetector.IsFullscreen("Progman", coversMonitor, screen), "desktop");
+    Equal(false, FullscreenDetector.IsFullscreen("WorkerW", coversMonitor, screen), "desktop worker");
+    Equal(false, FullscreenDetector.IsFullscreen("Shell_TrayWnd", coversMonitor, screen), "taskbar");
+    Equal(false, FullscreenDetector.IsFullscreen("HwndWrapper[Game.exe;;guid]", new NativeMethods.RECT { Left = 0, Top = 0, Right = 1920, Bottom = 1080 }, screen), "window on one monitor only");
 }
 
 static void TestArguments(){

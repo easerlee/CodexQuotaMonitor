@@ -52,7 +52,8 @@ public sealed class MetricGaugeBlock : FrameworkElement
         DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, muted, dpi);
 
         var gaugeSize = Math.Clamp(height - 3, 22.0, 32.0);
-        var gaugeX = width - gaugeSize - 1.0;
+        // The ring hugs the text on its left instead of the cell edge.
+        var gaugeX = width - gaugeSize - 4.0;
         var gaugeY = (height - gaugeSize) / 2.0;
         var center = new Point(gaugeX + gaugeSize / 2.0, gaugeY + gaugeSize / 2.0);
         var stroke = Math.Clamp(gaugeSize * 0.09, 2.0, 3.2);
