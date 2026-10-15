@@ -7,11 +7,13 @@ public static class Constants
     public const string MutexName = "Local\\CodexQuotaMonitorNative";
     public const int DefaultQuotaIntervalSeconds = 180;
 
-    // Each metric cell keeps the width it had when the card still had a third slot;
-    // the card just got narrower instead of the cells growing.
-    public const int CellWidth = 72;
+    // Each cell keeps the drawable width it had; the gaps around the indicator line are
+    // wider now, so the card is simply that little bit wider too.
+    public const int CellSlotWidth = 75;
     public const int CardChrome = 10;
-    public const int DefaultWidth = 2 * CellWidth + CardChrome;
+    public const int SeparatorGapLeft = 4;
+    public const int SeparatorGapRight = 6;
+    public const int DefaultWidth = 2 * CellSlotWidth + CardChrome;
     public const int DefaultHeight = 48;
     public const double DefaultRedThreshold = 15.0;
     public const double DefaultAmberThreshold = 30.0;

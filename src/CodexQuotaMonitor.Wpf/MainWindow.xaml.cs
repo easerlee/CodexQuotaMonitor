@@ -61,10 +61,12 @@ public partial class MainWindow : Window
 
     private MetricGaugeBlock AddGaugeBlock(string title, int column)
     {
-        var block = new MetricGaugeBlock(title, _settings)
-        {
-            Margin = new Thickness(column == 0 ? 0 : 3, 0, 2, 0)
-        };
+        // Leaves room either side of the indicator line, which is right-aligned in the
+        // first column.
+        var margin = column == 0
+            ? new Thickness(0, 0, Constants.SeparatorGapLeft, 0)
+            : new Thickness(Constants.SeparatorGapRight, 0, 2, 0);
+        var block = new MetricGaugeBlock(title, _settings) { Margin = margin };
         Grid.SetColumn(block, column);
         RootGrid.Children.Add(block);
         return block;
