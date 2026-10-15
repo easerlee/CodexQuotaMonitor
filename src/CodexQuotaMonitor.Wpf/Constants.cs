@@ -7,13 +7,8 @@ public static class Constants
     public const string MutexName = "Local\\CodexQuotaMonitorNative";
     public const int DefaultQuotaIntervalSeconds = 180;
 
-    // Each cell keeps the drawable width it had; the gaps around the indicator line are
-    // wider now, so the card is simply that little bit wider too.
-    public const int CellSlotWidth = 82;
-    public const int CardChrome = 10;
-    public const int SeparatorGapLeft = 8;
-    public const int SeparatorGapRight = 10;
-    public const int DefaultWidth = 2 * CellSlotWidth + CardChrome;
+    // Three rows: the 5H and WK bars, then the "15:33 / 5d 7h" line with the state light.
+    public const int DefaultWidth = 174;
     public const int DefaultHeight = 48;
     public const double DefaultRedThreshold = 15.0;
     public const double DefaultAmberThreshold = 30.0;

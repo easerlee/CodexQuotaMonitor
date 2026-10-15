@@ -4,6 +4,10 @@ using System.Globalization;
 
 public static class Formatting
 {
+    // Every row uses the same text size, derived from the row height so a taller or
+    // shorter taskbar keeps the three rows balanced.
+    public static double TextSize(double rowHeight) => Math.Clamp(rowHeight * 0.78, 8.5, 12.0);
+
     // Local clock time the window resets, e.g. "15:20".
     public static string ResetClock(long? epochSeconds)
     {
@@ -65,8 +69,6 @@ public static class Formatting
     public static System.Windows.Media.Color PrimaryText => ColorFromHex(LightTaskbar ? "#1B2027" : "#F4F6F8");
 
     public static System.Windows.Media.Color GaugeTrack => ColorFromHex(LightTaskbar ? "#33000000" : "#6A56616C");
-
-    public static System.Windows.Media.Color SeparatorLine => ColorFromHex(LightTaskbar ? "#59000000" : "#38FFFFFF");
 
     public static System.Windows.Media.Color Ok => ColorFromHex(LightTaskbar ? "#0F8A69" : "#2DD4A8");
 

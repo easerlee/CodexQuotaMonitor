@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _menuDismissTimer = new();
     private readonly MetricGaugeBlock _quota5h;
     private readonly MetricGaugeBlock _quotaWeek;
+    private readonly TextBlock _resetText;
     private readonly Border _statusLight;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
@@ -49,56 +50,50 @@ public partial class MainWindow : Window
         Width = Constants.DefaultWidth;
         Height = Constants.DefaultHeight;
 
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var row = 0; row < 3; row++)
+        {
+            RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        }
+
         _quota5h = AddGaugeBlock("5H", 0);
         _quotaWeek = AddGaugeBlock("WK", 1);
-        _statusLight = AddStatusLight(0);
+
+        _resetText = new TextBlock
+        {
+            Margin = new Thickness(4, 0, 14, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Foreground = new SolidColorBrush(Formatting.PrimaryText),
+            FontFamily = new System.Windows.Media.FontFamily("Segoe UI Variable Text, Segoe UI")
+        };
+        Grid.SetRow(_resetText, 2);
+        RootGrid.Children.Add(_resetText);
+
+        _statusLight = new Border
+        {
+            Width = 6,
+            Height = 6,
+            CornerRadius = new CornerRadius(3),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 3, 0),
+            Background = new SolidColorBrush(Formatting.Idle),
+            IsHitTestVisible = false
+        };
+        Grid.SetRow(_statusLight, 2);
+        RootGrid.Children.Add(_statusLight);
 
         BuildMenu();
         ConfigureTimers();
         RefreshNow();
     }
 
-    private MetricGaugeBlock AddGaugeBlock(string title, int column)
+    private MetricGaugeBlock AddGaugeBlock(string title, int row)
     {
-        // Leaves room either side of the indicator line, which is right-aligned in the
-        // first column.
-        var margin = column == 0
-            ? new Thickness(0, 0, Constants.SeparatorGapLeft, 0)
-            : new Thickness(Constants.SeparatorGapRight, 0, 2, 0);
-        var block = new MetricGaugeBlock(title, _settings) { Margin = margin };
-        Grid.SetColumn(block, column);
+        var block = new MetricGaugeBlock(title, _settings);
+        Grid.SetRow(block, row);
         RootGrid.Children.Add(block);
         return block;
-    }
-
-    // The separator reads like an exclamation mark: a 3px line in the card's own colour,
-    // a 3px gap, then a 3px square whose colour reports the reading state.
-    private Border AddStatusLight(int column)
-    {
-        var stack = new Grid
-        {
-            Width = 3,
-            Margin = new Thickness(0, 5, 0, 5),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-            VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
-            IsHitTestVisible = false
-        };
-        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
-        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
-
-        var line = new Border { Background = new SolidColorBrush(Formatting.SeparatorLine) };
-        Grid.SetRow(line, 0);
-        var light = new Border { Background = new SolidColorBrush(Formatting.Idle) };
-        Grid.SetRow(light, 2);
-
-        stack.Children.Add(line);
-        stack.Children.Add(light);
-        Grid.SetColumn(stack, column);
-        RootGrid.Children.Add(stack);
-        return light;
     }
 
     private void ConfigureTimers()
@@ -344,25 +339,15 @@ public partial class MainWindow : Window
 
     private void RenderQuota()
     {
-        if (_lastQuota is null)
-        {
-            _quota5h.SetMetric(null, "wait", _settings);
-            _quotaWeek.SetMetric(null, "wait", _settings);
-            return;
-        }
-        if (_lastQuota.Error is not null && _lastQuota.FiveHour is null && _lastQuota.Weekly is null)
-        {
-            _quota5h.SetMetric(null, "unavail", _settings);
-            _quotaWeek.SetMetric(null, "refresh", _settings);
-            return;
-        }
+        var fiveHour = _lastQuota?.FiveHour;
+        var weekly = _lastQuota?.Weekly;
+        _quota5h.SetMetric(fiveHour?.RemainingPercent, _settings);
+        _quotaWeek.SetMetric(weekly?.RemainingPercent, _settings);
 
-        var fiveHour = _lastQuota.FiveHour;
-        var weekly = _lastQuota.Weekly;
-        // The 5h line shows the clock time it resets, which reads better than a countdown;
-        // the weekly line keeps the countdown.
-        _quota5h.SetMetric(fiveHour?.RemainingPercent, fiveHour is null ? "inactive" : Formatting.ResetClock(fiveHour.ResetsAt), _settings);
-        _quotaWeek.SetMetric(weekly?.RemainingPercent, weekly is null ? "unavail" : Formatting.Countdown(weekly.ResetsAt), _settings);
+        // Bottom line: the 5h reset clock and the weekly countdown side by side.
+        _resetText.Text = $"{Formatting.ResetClock(fiveHour?.ResetsAt)} / {Formatting.Countdown(weekly?.ResetsAt)}";
+        var rowHeight = RootGrid.ActualHeight > 0 ? RootGrid.ActualHeight / 3.0 : Constants.DefaultHeight / 3.0;
+        _resetText.FontSize = Formatting.TextSize(rowHeight);
     }
 
     private void RenderStatusLight()

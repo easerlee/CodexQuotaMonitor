@@ -2,18 +2,15 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
-using Color = System.Windows.Media.Color;
 using FontFamily = System.Windows.Media.FontFamily;
-using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
-using Size = System.Windows.Size;
 
 namespace CodexQuotaMonitor.Wpf;
 
+// One row of the card: the 5H/WK label and a bar filled to the remaining percentage.
 public sealed class MetricGaugeBlock : FrameworkElement
 {
     private readonly string _title;
-    private string _detail = "wait";
     private double? _remaining;
     private AppSettings _settings;
 
@@ -26,10 +23,9 @@ public sealed class MetricGaugeBlock : FrameworkElement
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Ideal);
     }
 
-    public void SetMetric(double? remaining, string detail, AppSettings settings)
+    public void SetMetric(double? remaining, AppSettings settings)
     {
         _remaining = remaining;
-        _detail = Formatting.Truncate(detail, 8);
         _settings = settings;
         InvalidateVisual();
     }
@@ -38,111 +34,37 @@ public sealed class MetricGaugeBlock : FrameworkElement
     {
         base.OnRender(dc);
         var width = Math.Max(28.0, ActualWidth);
-        var height = Math.Max(22.0, ActualHeight);
+        var height = Math.Max(12.0, ActualHeight);
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var accentColor = Formatting.ColorForRemaining(_remaining, _settings);
-        var accent = new SolidColorBrush(accentColor);
         var primary = new SolidColorBrush(Formatting.PrimaryText);
         var track = new SolidColorBrush(Formatting.GaugeTrack);
+        var accent = new SolidColorBrush(Formatting.ColorForRemaining(_remaining, _settings));
 
-        var gaugeSize = Math.Clamp(height - 3, 22.0, 30.0);
-        // The ring hugs the text on its left instead of the cell edge.
-        var gaugeX = width - gaugeSize - 4.0;
+        var label = MakeText(_title, Formatting.TextSize(height), FontWeights.Bold, primary, dpi);
+        dc.DrawText(label, new Point(4, Math.Max(0, (height - label.Height) / 2)));
 
-        var labelSize = Math.Clamp(height * 0.27, 9.0, 11.5);
-        var detailSize = Math.Clamp(height * 0.26, 9.0, 11.5);
-        DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
-        DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, primary, dpi, gaugeX - 6.0);
-
-        var gaugeY = (height - gaugeSize) / 2.0;
-        var center = new Point(gaugeX + gaugeSize / 2.0, gaugeY + gaugeSize / 2.0);
-        var stroke = Math.Clamp(gaugeSize * 0.09, 2.0, 3.2);
-        var radius = Math.Max(5.0, gaugeSize / 2.0 - stroke - 0.8);
-        var trackPen = new Pen(track, stroke) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-        dc.DrawEllipse(null, trackPen, center, radius, radius);
-
-        if (_remaining.HasValue)
-        {
-            var percent = Math.Clamp(_remaining.Value, 0.0, 100.0);
-            if (percent >= 99.95)
-            {
-                dc.DrawEllipse(null, new Pen(accent, stroke), center, radius, radius);
-            }
-            else
-            {
-                DrawArc(dc, center, radius, percent, accentColor, stroke);
-            }
-        }
-
-        DrawCenteredText(
-            dc,
-            Formatting.RemainingText(_remaining),
-            new Rect(gaugeX, gaugeY, gaugeSize, gaugeSize),
-            Math.Clamp(gaugeSize * 0.43, 10.0, 16.0),
-            FontWeights.Bold,
-            _remaining.HasValue ? accent : primary,
-            dpi);
-    }
-
-    private static void DrawArc(DrawingContext dc, Point center, double radius, double percent, Color color, double stroke)
-    {
-        if (percent <= 0)
+        var barLeft = 4 + label.WidthIncludingTrailingWhitespace + 5;
+        var barWidth = width - 2 - barLeft;
+        if (barWidth < 6)
         {
             return;
         }
 
-        var angle = percent / 100.0 * 360.0;
-        var start = PointOnCircle(center, radius, -90);
-        var end = PointOnCircle(center, radius, -90 + angle);
-        var geometry = new StreamGeometry();
-        using (var context = geometry.Open())
+        var barHeight = Math.Clamp(height * 0.42, 4.0, 7.0);
+        var barTop = (height - barHeight) / 2;
+        const double radius = 3.0;
+        dc.DrawRoundedRectangle(track, null, new Rect(barLeft, barTop, barWidth, barHeight), radius, radius);
+
+        if (_remaining.HasValue)
         {
-            context.BeginFigure(start, false, false);
-            context.ArcTo(end, new Size(radius, radius), 0, angle > 180, SweepDirection.Clockwise, true, false);
+            var filled = barWidth * Math.Clamp(_remaining.Value, 0.0, 100.0) / 100.0;
+            dc.DrawRoundedRectangle(
+                accent,
+                null,
+                new Rect(barLeft, barTop, Math.Clamp(filled, radius * 2, barWidth), barHeight),
+                radius,
+                radius);
         }
-        geometry.Freeze();
-        dc.DrawGeometry(null, new Pen(new SolidColorBrush(color), stroke)
-        {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap = PenLineCap.Round
-        }, geometry);
-    }
-
-    private static Point PointOnCircle(Point center, double radius, double degrees)
-    {
-        var radians = degrees * Math.PI / 180.0;
-        return new Point(center.X + radius * Math.Cos(radians), center.Y + radius * Math.Sin(radians));
-    }
-
-    // maxWidth keeps the detail line out of the ring's way; longer text is ellipsised.
-    private static void DrawText(
-        DrawingContext dc,
-        string text,
-        double x,
-        double y,
-        double size,
-        FontWeight weight,
-        Brush brush,
-        double dpi,
-        double maxWidth = double.PositiveInfinity)
-    {
-        var formatted = MakeText(text, size, weight, brush, dpi);
-        if (!double.IsPositiveInfinity(maxWidth))
-        {
-            formatted.MaxTextWidth = Math.Max(1.0, maxWidth);
-            formatted.Trimming = TextTrimming.CharacterEllipsis;
-        }
-
-        dc.DrawText(formatted, new Point(x, y));
-    }
-
-    private static void DrawCenteredText(DrawingContext dc, string text, Rect bounds, double size, FontWeight weight, Brush brush, double dpi)
-    {
-        var formatted = MakeText(text, size, weight, brush, dpi);
-        var textBounds = formatted.BuildGeometry(new Point(0, 0)).Bounds;
-        var x = bounds.Left + (bounds.Width - textBounds.Width) / 2.0 - textBounds.Left;
-        var y = bounds.Top + (bounds.Height - textBounds.Height) / 2.0 - textBounds.Top;
-        dc.DrawText(formatted, new Point(x, y));
     }
 
     private static FormattedText MakeText(string text, double size, FontWeight weight, Brush brush, double dpi)
