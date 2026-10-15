@@ -8,6 +8,7 @@ var tests = new (string Name, Action Body)[]
     ("settings defaults, JSON load, CLI override, corrupt fallback", TestSettings),
     ("formatting helpers", TestFormatting),
     ("taskbar overlay placement", TestTaskbarPlacement),
+    ("bar geometry ignores the label", TestBarGeometry),
     ("autostart registry Run entry", TestAutostartRegistration),
     ("fullscreen detection", TestFullscreenDetector),
     ("argument handling", TestArguments)
@@ -197,6 +198,28 @@ static void TestFullscreenDetector()
     Equal(false, FullscreenDetector.IsFullscreen("WorkerW", coversMonitor, screen), "desktop worker");
     Equal(false, FullscreenDetector.IsFullscreen("Shell_TrayWnd", coversMonitor, screen), "taskbar");
     Equal(false, FullscreenDetector.IsFullscreen("HwndWrapper[Game.exe;;guid]", new NativeMethods.RECT { Left = 0, Top = 0, Right = 1920, Bottom = 1080 }, screen), "window on one monitor only");
+}
+
+static void TestBarGeometry()
+{
+    // Card is 116px wide; its inner grid is 116 - 2 (border/margin) - 6 (grid margin) = 106.
+    const double rowWidth = 106;
+    const double rowHeight = (48 - 4) / 3.0;
+
+    var (left, right) = MetricGaugeBlock.BarGeometry(rowWidth, rowHeight);
+    Equal(106.0 - 2, right, "bar right edge matches the state light");
+    if (right - left < 40)
+    {
+        throw new InvalidOperationException($"bar too short: {right - left:0.#}px");
+    }
+
+    // The fixed label column must fit two monospace characters (advance is 0.55em).
+    var textSize = Formatting.TextSize(rowHeight);
+    if (left - 4 < 2 * 0.55 * textSize)
+    {
+        throw new InvalidOperationException(
+            $"label column {left - 4:0.#}px cannot hold two {textSize:0.#}px monospace characters");
+    }
 }
 
 static void TestArguments(){

@@ -39,11 +39,11 @@ public sealed class MetricGaugeBlock : FrameworkElement
         // Fixed label column: both rows start their bar at exactly the same x, no matter
         // how wide the glyphs or the fallback font happen to measure.
         var textSize = Formatting.TextSize(height);
-        var label = OverlayText.Make(_title, textSize, FontWeights.Bold, primary, dpi);
+        var label = OverlayText.Make(_title, textSize, FontWeights.Normal, primary, dpi);
         OverlayText.DrawInkCentered(dc, label, 4, height);
 
-        var barLeft = 4 + Math.Ceiling(textSize * 1.2) + 5;
-        var barWidth = width - 2 - barLeft;
+        var (barLeft, barRight) = BarGeometry(width, height);
+        var barWidth = barRight - barLeft;
         if (barWidth < 6)
         {
             return;
@@ -64,5 +64,13 @@ public sealed class MetricGaugeBlock : FrameworkElement
                 radius,
                 radius);
         }
+    }
+
+    // Bar extents for one row, derived from the row geometry alone: the label never enters
+    // the calculation, so 5H and WK always get an identical bar. The right edge matches the
+    // state light's (MainWindow gives it a 2px right margin).
+    public static (double Left, double Right) BarGeometry(double rowWidth, double rowHeight)
+    {
+        return (4 + Math.Ceiling(Formatting.TextSize(rowHeight) * 1.2) + 5, rowWidth - 2);
     }
 }

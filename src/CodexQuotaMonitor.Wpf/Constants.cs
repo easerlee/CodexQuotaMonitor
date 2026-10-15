@@ -6,8 +6,8 @@ public static class Constants
     public const string WindowTitlePrefix = "Codex Quota Monitor Native";
     public const string MutexName = "Local\\CodexQuotaMonitorNative";
 
-    // Monospace with a real Bold face (all rows are ASCII), present on every Windows.
-    public const string UiFont = "Consolas, Segoe UI";
+    // Monospace; falls back to Consolas/Segoe UI when the font is missing.
+    public const string UiFont = "YaHei Consolas Hybrid, Consolas, Segoe UI";
     public const int DefaultQuotaIntervalSeconds = 180;
 
     // Three rows: the 5H and WK bars, then the "15:33 / 5d 7h" line with the state light.
