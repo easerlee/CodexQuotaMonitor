@@ -9,6 +9,8 @@ var tests = new (string Name, Action Body)[]
     ("formatting helpers", TestFormatting),
     ("taskbar overlay placement", TestTaskbarPlacement),
     ("bar geometry ignores the label", TestBarGeometry),
+    ("account identity from auth.json", TestAccountIdentity),
+    ("account history store and rows", TestAccountHistory),
     ("autostart registry Run entry", TestAutostartRegistration),
     ("fullscreen detection", TestFullscreenDetector),
     ("argument handling", TestArguments)
@@ -219,6 +221,117 @@ static void TestBarGeometry()
     {
         throw new InvalidOperationException(
             $"label column {left - 4:0.#}px cannot hold two {textSize:0.#}px monospace characters");
+    }
+}
+
+static void TestAccountIdentity()
+{
+    static string Jwt(object payload)
+    {
+        static string B64(string text) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        return B64("{\"alg\":\"none\"}") + "." + B64(JsonSerializer.Serialize(payload)) + ".sig";
+    }
+
+    var json = JsonSerializer.Serialize(new
+    {
+        auth_mode = "chatgpt",
+        tokens = new
+        {
+            account_id = "9bd8c1e2-aaaa-bbbb-cccc-1234abcd99fc",
+            id_token = Jwt(new Dictionary<string, object?>
+            {
+                ["email"] = "es@example.com",
+                ["name"] = "E S",
+                ["https://api.openai.com/auth"] = new Dictionary<string, object?>
+                {
+                    ["chatgpt_plan_type"] = "plus"
+                }
+            })
+        }
+    });
+    var identity = AccountIdentity.Parse(json);
+    if (identity is null)
+    {
+        throw new InvalidOperationException("identity was not parsed");
+    }
+
+    Equal("9bd8c1e2-aaaa-bbbb-cccc-1234abcd99fc", identity.Id, "account id");
+    Equal("es@example.com", identity.Email, "email from id_token");
+    Equal("es", identity.Display, "display keeps only the part before the @");
+    Equal("plus", identity.PlanType, "plan from id_token");
+
+    Equal<AccountIdentity?>(null, AccountIdentity.Parse("{\"tokens\":null}"), "tokens not an object");
+    Equal<AccountIdentity?>(null, AccountIdentity.Parse("not json"), "garbage auth file");
+
+    // Fall back to the account id when the token carries no email.
+    var idOnly = AccountIdentity.Parse(
+        JsonSerializer.Serialize(new { tokens = new { account_id = "abc123" } }));
+    Equal("abc123", idOnly?.Display, "display falls back to the id");
+}
+
+static void TestAccountHistory()
+{
+    var directory = Path.Combine(Path.GetTempPath(), "cqm-accounts-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var store = new AccountHistoryStore(Path.Combine(directory, "accounts.json"));
+        Equal(0, store.Load().Count, "empty store");
+
+        var now = DateTimeOffset.Now;
+        store.Upsert(new AccountRecord("acct-1", "one@example.com", "plus", now.AddMinutes(-10), 68, now.AddHours(2).ToUnixTimeSeconds(), 55, now.AddDays(4).ToUnixTimeSeconds()));
+        store.Upsert(new AccountRecord("acct-2", "two@example.com", "pro", now, 12, now.AddHours(1).ToUnixTimeSeconds(), 40, now.AddDays(2).ToUnixTimeSeconds()));
+        // Re-reading the second account must overwrite its row, not append a duplicate.
+        store.Upsert(new AccountRecord("acct-2", "two@example.com", "pro", now, 41, now.AddHours(1).ToUnixTimeSeconds(), 40, now.AddDays(2).ToUnixTimeSeconds()));
+
+        var records = store.Load();
+        Equal(2, records.Count, "one row per account");
+        Equal(41.0, records.Single(r => r.AccountId == "acct-2").FiveHourPercent, "overwritten value");
+        Equal(68.0, records.Single(r => r.AccountId == "acct-1").FiveHourPercent, "other account untouched");
+
+        var acct1 = records.Single(r => r.AccountId == "acct-1");
+        var live = AccountRow.Lines(acct1, now, current: true);
+        Equal(4, live.Count, "account block is the name plus three info lines");
+        if (!live[0].Contains("one") || !live[0].Contains("当前") || live[0].Contains("@"))
+        {
+            throw new InvalidOperationException($"name line looks wrong: {live[0]}");
+        }
+
+        if (!live[1].Contains("68%") || live[1].Contains("已重置"))
+        {
+            throw new InvalidOperationException($"5H line looks wrong: {live[1]}");
+        }
+
+        if (!live[2].Contains("55%"))
+        {
+            throw new InvalidOperationException($"weekly line looks wrong: {live[2]}");
+        }
+
+        var seenLine = acct1.LastSeenAt.ToLocalTime().ToString("M/d HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        Equal($"  {seenLine}", live[3], "reading-time line is left-aligned and unlabelled");
+
+        // A window whose reset time has passed must read 已重置, and the block must keep the
+        // same width so the columns line up across accounts.
+        var expired = records.Single(r => r.AccountId == "acct-1") with
+        {
+            FiveHourResetsAt = now.AddMinutes(-5).ToUnixTimeSeconds()
+        };
+        var expiredLines = AccountRow.Lines(expired, now, current: false);
+        if (!expiredLines[1].Contains("已重置") || expiredLines[1].Contains("68%"))
+        {
+            throw new InvalidOperationException($"expired line looks wrong: {expiredLines[1]}");
+        }
+
+        static int DisplayWidth(string text) => text.Sum(c => c > 0x2E80 ? 2 : 1);
+        Equal(DisplayWidth(live[1]), DisplayWidth(expiredLines[1]), "5H line keeps its width");
+        Equal(DisplayWidth(live[2]), DisplayWidth(expiredLines[2]), "weekly line keeps its width");
+    }
+    finally
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, true);
+        }
     }
 }
 

@@ -15,6 +15,8 @@ public partial class MainWindow : Window
     private readonly AppPaths _paths;
     private readonly SimpleLogger _logger;
     private readonly QuotaReader _quotaReader;
+    private readonly string _codexHome;
+    private readonly AccountHistoryStore _accountHistory;
     private readonly DispatcherTimer _tickTimer = new();
     private readonly DispatcherTimer _topmostTimer = new();
     private readonly DispatcherTimer _placementTimer = new();
@@ -26,6 +28,8 @@ public partial class MainWindow : Window
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
+    private Forms.ToolStripLabel? _currentAccountItem;
+    private readonly List<Forms.ToolStripItem> _accountRows = new();
     private AppSettings _settings;
     private IntPtr _hwnd;
     private QuotaSnapshot? _lastQuota;
@@ -44,7 +48,9 @@ public partial class MainWindow : Window
         _paths = paths;
         _settings = settings;
         _logger = logger;
-        _quotaReader = new QuotaReader(paths.ResolveCodexHome(options.CodexHome), options.CodexExe, logger);
+        _codexHome = paths.ResolveCodexHome(options.CodexHome);
+        _quotaReader = new QuotaReader(_codexHome, options.CodexExe, logger);
+        _accountHistory = new AccountHistoryStore(Path.Combine(paths.RootDirectory, "accounts.json"));
 
         InitializeComponent();
         Width = Constants.DefaultWidth;
@@ -113,6 +119,7 @@ public partial class MainWindow : Window
         {
             _menuVisible = true;
             UpdateMenuChecks();
+            RebuildAccountViews();
         };
         _menu.Opened += (_, _) =>
         {
@@ -126,25 +133,109 @@ public partial class MainWindow : Window
             ForceTopmost();
         };
         _menu.AutoClose = true;
-        _menu.Items.Add("立即刷新", null, (_, _) => RefreshNow());
-        _menu.Items.Add("重新贴靠到托盘左侧", null, (_, _) => SnapToTaskbar());
-        _autostartItem = new Forms.ToolStripMenuItem("开机自动启动") { CheckOnClick = false };
-        _autostartItem.Click += (_, _) => ToggleAutostart();
-        _menu.Items.Add(_autostartItem);
+        _currentAccountItem = AccountLabel("当前账号：读取中…");
+        _menu.Items.Add(_currentAccountItem);
         _menu.Items.Add(new Forms.ToolStripSeparator());
 
-        var quotaMenu = new Forms.ToolStripMenuItem("刷新间隔");
+        // Everything except 退出 lives in 设置, so the first level stays about the account.
+        // It opens leftwards: the card sits at the screen's right edge under the tray.
+        var settingsMenu = new Forms.ToolStripMenuItem("设置")
+        {
+            DropDownDirection = Forms.ToolStripDropDownDirection.Left
+        };
+        settingsMenu.DropDownItems.Add("立即刷新", null, (_, _) => RefreshNow());
+        settingsMenu.DropDownItems.Add("重新贴靠到托盘左侧", null, (_, _) => SnapToTaskbar());
+        _autostartItem = new Forms.ToolStripMenuItem("开机自动启动") { CheckOnClick = false };
+        _autostartItem.Click += (_, _) => ToggleAutostart();
+        settingsMenu.DropDownItems.Add(_autostartItem);
+        settingsMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+        settingsMenu.DropDownItems.Add(AccountLabel("刷新间隔"));
         foreach (var (label, seconds) in new[] { ("1 分钟", 60), ("3 分钟", 180), ("5 分钟", 300), ("10 分钟", 600), ("15 分钟", 900) })
         {
             var item = new Forms.ToolStripMenuItem(label) { Tag = seconds, CheckOnClick = false };
             item.Click += (_, _) => SetQuotaInterval(seconds);
-            quotaMenu.DropDownItems.Add(item);
+            settingsMenu.DropDownItems.Add(item);
             _quotaIntervalItems.Add(item);
         }
-        _menu.Items.Add(quotaMenu);
+
+        _menu.Items.Add(settingsMenu);
         _menu.Items.Add(new Forms.ToolStripSeparator());
         _menu.Items.Add("退出", null, (_, _) => RequestExit());
         UpdateMenuChecks();
+        RebuildAccountViews();
+    }
+
+    // The account blocks sit between the current-account line and the 设置/退出 tail, and are
+    // rebuilt whenever the menu opens so the list is never stale.
+    private void RebuildAccountViews()
+    {
+        var identity = AccountIdentity.Read(_codexHome);
+        if (_currentAccountItem is not null)
+        {
+            _currentAccountItem.Text = identity is null
+                ? "当前账号：未读取到 auth.json"
+                : $"当前账号：{identity.Display}";
+        }
+
+        foreach (var row in _accountRows)
+        {
+            _menu.Items.Remove(row);
+            row.Dispose();
+        }
+
+        _accountRows.Clear();
+
+        var records = _accountHistory.Load()
+            .OrderByDescending(record => record.LastSeenAt)
+            .ToList();
+        var insertAt = Math.Max(2, _menu.Items.Count - 4);
+        foreach (var row in BuildAccountRows(records, identity))
+        {
+            _menu.Items.Insert(insertAt++, row);
+            _accountRows.Add(row);
+        }
+
+        // Labels are added while the menu is opening, so re-measure or the widest row gets
+        // clipped by the menu edge.
+        _menu.PerformLayout();
+    }
+
+    private static IEnumerable<Forms.ToolStripItem> BuildAccountRows(
+        IReadOnlyList<AccountRecord> records,
+        AccountIdentity? identity)
+    {
+        if (records.Count == 0)
+        {
+            yield return AccountLabel("（取数成功后自动记录）");
+            yield break;
+        }
+
+        var now = DateTimeOffset.Now;
+        var first = true;
+        foreach (var record in records)
+        {
+            if (!first)
+            {
+                yield return new Forms.ToolStripSeparator();
+            }
+
+            first = false;
+            var current = identity is not null &&
+                string.Equals(record.AccountId, identity.Id, StringComparison.OrdinalIgnoreCase);
+            foreach (var line in AccountRow.Lines(record, now, current))
+            {
+                yield return AccountLabel(line);
+            }
+        }
+    }
+
+    private static Forms.ToolStripLabel AccountLabel(string text)
+    {
+        return new Forms.ToolStripLabel(text)
+        {
+            AutoSize = true,
+            Font = new System.Drawing.Font("Consolas", 9F)
+        };
     }
 
     private void ToggleAutostart()
@@ -312,6 +403,7 @@ public partial class MainWindow : Window
             _lastQuota = value;
             _quotaLastError = null;
             _quotaLastSuccessAt = value.UpdatedAt ?? DateTimeOffset.Now;
+            RecordAccount(value);
         }
 
         if (_quotaPendingRefresh)
@@ -328,6 +420,27 @@ public partial class MainWindow : Window
         RenderQuota();
         RenderStatusLight();
         UpdateTitle();
+    }
+
+    // File this reading under whoever is logged in now. Switching accounts later leaves the
+    // record untouched, so it keeps the last values seen for that account.
+    private void RecordAccount(QuotaSnapshot snapshot)
+    {
+        var identity = AccountIdentity.Read(_codexHome);
+        if (identity is null)
+        {
+            return;
+        }
+
+        _accountHistory.Upsert(new AccountRecord(
+            identity.Id,
+            identity.Email,
+            snapshot.PlanType ?? identity.PlanType,
+            DateTimeOffset.Now,
+            snapshot.FiveHour?.RemainingPercent,
+            snapshot.FiveHour?.ResetsAt,
+            snapshot.Weekly?.RemainingPercent,
+            snapshot.Weekly?.ResetsAt));
     }
 
     private void RenderQuota()
