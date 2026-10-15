@@ -4,7 +4,7 @@
   <p><strong>C# WPF 原生版</strong> · Windows 桌面版 Codex 的紧凑任务栏额度浮窗</p>
 </div>
 
-这是一个面向 Windows 桌面版 Codex 的轻量常驻工具。它固定贴靠在主任务栏托盘图标左侧，以与任务栏相同的高度显示短周期额度、一周额度和本地刷新状态，不额外占用桌面工作区。
+这是一个面向 Windows 桌面版 Codex 的轻量常驻工具。它固定贴靠在主任务栏托盘图标左侧，以与任务栏相同的高度显示短周期额度和一周额度，不额外占用桌面工作区。
 
 本项目不是 Codex CLI 的通用封装器或替代入口。程序会调用 Windows 桌面版 Codex 随附的本机 `codex.exe app-server`，用户侧用途仍是观察桌面版 Codex 的额度状态。
 
@@ -15,24 +15,23 @@
 - 默认宽度约 260px，高度直接采用 Windows 主任务栏的实际高度。
 - 固定在托盘图标左侧并保持置顶；任务栏位置、尺寸或托盘区变化后会自动重新贴靠。左对齐任务栏下不再压在开始按钮上；读不到托盘区域时退回任务栏最左侧。
 - 半透明磨砂背景、矢量圆环和 DPI 自适应文字；窗口不出现在任务栏应用列表。
-- 托盘图标可用于刷新和退出；单实例运行，不会创建重复窗口或托盘图标。
-- 刷新失败时保留最后一次有效读数，并通过 `SYNC`、`WAIT`、`OLD`、`ERR` 或 `STALE` 标记状态。
+- 右上角小圆点表示读取状态：绿色正常、黄色正在读取或数据变旧、红色读取失败；单实例运行，不会创建重复窗口。
+- 刷新失败时保留最后一次有效读数，两个区域会显示 `unavail`、`refresh`、`inactive` 等文字说明。
 
 ![原生版紧凑任务栏浮窗](assets/gui-overview.png)
 
-三个区域的含义：
+两个区域的含义：
 
-- **5H**：约 5 小时短周期额度的剩余百分比及重置倒计时。如果服务端当前未提供该窗口，显示 `--` 和 `inactive`，不会拿其他窗口的数据代替。
-- **WK**：一周额度窗口的剩余百分比及重置倒计时。
-- **重置**：5 小时额度窗口的重置倒计时（分钟精度，与 **5H** 下那一行同源）。右上小圆点和下方状态词仍是读取状态（`SYNC`、`WAIT`、`OLD`、`ERR`、`STALE`）；上次成功刷新时间在窗口标题和托盘悬浮提示里。
+- **5H**：约 5 小时短周期额度的剩余百分比，下一行是重置倒计时（分钟精度）。如果服务端当前未提供该窗口，显示 `--` 和 `inactive`，不会拿其他窗口的数据代替。
+- **WK**：一周额度窗口的剩余百分比，下一行是重置倒计时。
 
-窗口和托盘共用同一组右键操作（中文菜单）：
+右键浮窗打开菜单（中文）：
 
 - **立即刷新**：立即读取一次额度。
 - **重新贴靠到托盘左侧**：立即重新贴靠到托盘图标左侧。
 - **开机自动启动**：在 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 里登记／移除当前 exe，勾选状态即注册表实际状态。
 - **刷新间隔**：将自动刷新间隔设置为 1、3、5、10 或 15 分钟。
-- **退出**：退出窗口、托盘图标和后台进程。
+- **退出**：退出窗口和后台进程。
 
 ![原生版右键菜单](assets/right-click-menu.png)
 
@@ -59,7 +58,7 @@
 
 额度查询会启动本机 `codex.exe app-server --listen stdio://`，再通过 JSON-RPC 调用 `account/rateLimits/read`。程序依据服务端返回的 `windowDurationMins` 识别额度窗口：约 `300` 分钟归入 **5H**，约 `10080` 分钟归入 **WK**，而不是假定 `primary` 一定代表 5H。
 
-程序不读取 `auth.json` 中的 token，也不自行把账号数据发送到第三方服务。`REF` 只显示本组件最近一次成功完成额度读取的本地时间与当前系统时间，不是 OpenAI 服务端时间。
+程序不读取 `auth.json` 中的 token，也不自行把账号数据发送到第三方服务。窗口标题里记录的是最近一次成功读取的本地时间，不是 OpenAI 服务端时间。
 
 需要注意：
 
@@ -85,7 +84,6 @@
 ~~~json
 {
   "quota_interval": 180,
-  "no_tray": false,
   "window_width": 260,
   "red_threshold": 15.0,
   "amber_threshold": 30.0
@@ -103,8 +101,8 @@ Start-CodexQuotaMonitorNative.cmd
 诊断和单次读取：
 
 ~~~cmd
-Start-CodexQuotaMonitorNative.cmd --check --no-tray
-Start-CodexQuotaMonitorNative.cmd --once --no-tray
+Start-CodexQuotaMonitorNative.cmd --check
+Start-CodexQuotaMonitorNative.cmd --once
 ~~~
 
 支持的参数：
@@ -114,7 +112,6 @@ Start-CodexQuotaMonitorNative.cmd --once --no-tray
 - **--codex-home &lt;path&gt;**：指定 Codex home，默认使用 `%CODEX_HOME%` 或 `~/.codex`。
 - **--codex-exe &lt;path&gt;**：指定 `codex.exe`。
 - **--quota-interval &lt;seconds&gt;**：覆盖额度刷新间隔。
-- **--tray / --no-tray**：覆盖托盘图标开关。
 
 ## 构建发布包
 

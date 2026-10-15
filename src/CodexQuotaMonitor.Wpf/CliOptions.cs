@@ -7,7 +7,6 @@ public sealed class CliOptions
     public string? CodexHome { get; private set; }
     public string? CodexExe { get; private set; }
     public int? QuotaInterval { get; private set; }
-    public bool? NoTray { get; private set; }
 
     public static CliOptions Parse(string[] args)
     {
@@ -22,12 +21,6 @@ public sealed class CliOptions
                     break;
                 case "--once":
                     options.Once = true;
-                    break;
-                case "--no-tray":
-                    options.NoTray = true;
-                    break;
-                case "--tray":
-                    options.NoTray = false;
                     break;
                 case "--codex-home":
                     options.CodexHome = TakeValue(args, ref index, arg);

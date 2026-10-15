@@ -21,12 +21,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _menuDismissTimer = new();
     private readonly MetricGaugeBlock _quota5h;
     private readonly MetricGaugeBlock _quotaWeek;
-    private readonly RefreshStatusBlock _refreshStatus;
+    private readonly System.Windows.Shapes.Ellipse _statusDot;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
-    private Forms.NotifyIcon? _notifyIcon;
-    private System.Drawing.Icon? _trayIcon;
     private AppSettings _settings;
     private IntPtr _hwnd;
     private QuotaSnapshot? _lastQuota;
@@ -52,15 +50,23 @@ public partial class MainWindow : Window
 
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.08, GridUnitType.Star) });
         _quota5h = AddGaugeBlock("5H", 0);
         _quotaWeek = AddGaugeBlock("WK", 1);
-        _refreshStatus = AddRefreshBlock(2);
         AddSeparator(0);
-        AddSeparator(1);
+
+        _statusDot = new System.Windows.Shapes.Ellipse
+        {
+            Width = 5,
+            Height = 5,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = System.Windows.VerticalAlignment.Top,
+            Margin = new Thickness(0, 4, 4, 0),
+            IsHitTestVisible = false
+        };
+        Grid.SetColumnSpan(_statusDot, 2);
+        RootGrid.Children.Add(_statusDot);
 
         BuildMenu();
-        SetupTray();
         ConfigureTimers();
         RefreshNow();
     }
@@ -71,14 +77,6 @@ public partial class MainWindow : Window
         {
             Margin = new Thickness(column == 0 ? 0 : 3, 0, 2, 0)
         };
-        Grid.SetColumn(block, column);
-        RootGrid.Children.Add(block);
-        return block;
-    }
-
-    private RefreshStatusBlock AddRefreshBlock(int column)
-    {
-        var block = new RefreshStatusBlock { Margin = new Thickness(3, 0, 0, 0) };
         Grid.SetColumn(block, column);
         RootGrid.Children.Add(block);
         return block;
@@ -141,7 +139,6 @@ public partial class MainWindow : Window
         _autostartItem = new Forms.ToolStripMenuItem("开机自动启动") { CheckOnClick = false };
         _autostartItem.Click += (_, _) => ToggleAutostart();
         _menu.Items.Add(_autostartItem);
-        _menu.Items.Add(new Forms.ToolStripMenuItem(_settings.NoTray ? "托盘图标：关" : "托盘图标：开") { Enabled = false });
         _menu.Items.Add(new Forms.ToolStripSeparator());
 
         var quotaMenu = new Forms.ToolStripMenuItem("刷新间隔");
@@ -164,31 +161,6 @@ public partial class MainWindow : Window
         {
             UpdateMenuChecks();
         }
-    }
-
-    private void SetupTray()
-    {
-        if (_settings.NoTray)
-        {
-            return;
-        }
-
-        _notifyIcon = new Forms.NotifyIcon
-        {
-            Icon = LoadTrayIcon(),
-            Text = Constants.AppName,
-            Visible = true,
-            ContextMenuStrip = _menu
-        };
-        _notifyIcon.MouseUp += (_, args) =>
-        {
-            if (args.Button == Forms.MouseButtons.Left)
-            {
-                SnapToTaskbar();
-                ForceTopmost();
-                RefreshNow();
-            }
-        };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -215,13 +187,6 @@ public partial class MainWindow : Window
         _topmostTimer.Stop();
         _placementTimer.Stop();
         _menuDismissTimer.Stop();
-        if (_notifyIcon is not null)
-        {
-            _notifyIcon.Visible = false;
-            _notifyIcon.Icon = null;
-            _notifyIcon.Dispose();
-        }
-        _trayIcon?.Dispose();
         _menu.Dispose();
 
         if (!_isExiting)
@@ -235,28 +200,6 @@ public partial class MainWindow : Window
     {
         _isExiting = true;
         System.Windows.Application.Current.Shutdown();
-    }
-
-    private System.Drawing.Icon LoadTrayIcon()
-    {
-        try
-        {
-            var processPath = Environment.ProcessPath;
-            if (!string.IsNullOrWhiteSpace(processPath))
-            {
-                _trayIcon = System.Drawing.Icon.ExtractAssociatedIcon(processPath);
-                if (_trayIcon is not null)
-                {
-                    return _trayIcon;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.Warning($"failed to load tray icon from executable: {ex.Message}");
-        }
-
-        return System.Drawing.SystemIcons.Application;
     }
 
     private void OnMouseRightButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -351,13 +294,13 @@ public partial class MainWindow : Window
                 _quotaPendingRefresh = true;
             }
             UpdateTitle();
-            RenderRefreshStatus();
+            RenderStatusDot();
             return;
         }
 
         _quotaInFlight = true;
         UpdateTitle();
-        RenderRefreshStatus();
+        RenderStatusDot();
         _ = Task.Run(async () => await _quotaReader.ReadAsync())
             .ContinueWith(task => Dispatcher.Invoke(() => HandleQuotaResult(task)));
     }
@@ -395,7 +338,7 @@ public partial class MainWindow : Window
     private void Render()
     {
         RenderQuota();
-        RenderRefreshStatus();
+        RenderStatusDot();
         UpdateTitle();
     }
 
@@ -420,38 +363,18 @@ public partial class MainWindow : Window
         _quotaWeek.SetMetric(weekly?.RemainingPercent, weekly is null ? "unavail" : Formatting.Countdown(weekly.ResetsAt), _settings);
     }
 
-    private void RenderRefreshStatus()
+    private void RenderStatusDot()
     {
-        // The status block shows the 5-hour reset countdown; the dot and status word still
-        // report how fresh the reading is.
-        var resetsAt = _lastQuota?.FiveHour?.ResetsAt;
-        if (_quotaInFlight)
-        {
-            _refreshStatus.SetStatus(resetsAt, "SYNC", "#FFC857");
-            return;
-        }
-        if (_lastQuota is null)
-        {
-            _refreshStatus.SetStatus(null, "WAIT", "#8794A2");
-            return;
-        }
-        if (_quotaLastError is not null && _quotaLastSuccessAt.HasValue)
-        {
-            _refreshStatus.SetStatus(resetsAt, "OLD", "#FFC857");
-            return;
-        }
-        if (_lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue)
-        {
-            _refreshStatus.SetStatus(null, "ERR", "#FF6B81");
-            return;
-        }
-        if (IsStale(_quotaLastSuccessAt, _settings.QuotaInterval))
-        {
-            _refreshStatus.SetStatus(resetsAt, "STALE", "#FFC857");
-            return;
-        }
-
-        _refreshStatus.SetStatus(resetsAt, "", "#2DD4A8");
+        var accent = _quotaInFlight || IsStale(_quotaLastSuccessAt, _settings.QuotaInterval)
+            ? "#FFC857"
+            : _lastQuota is null
+                ? "#8794A2"
+                : _quotaLastError is not null && _quotaLastSuccessAt.HasValue
+                    ? "#FFC857"
+                    : _lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue
+                        ? "#FF6B81"
+                        : "#2DD4A8";
+        _statusDot.Fill = new SolidColorBrush(Formatting.ColorFromHex(accent));
     }
 
     private void UpdateTitle()
@@ -466,10 +389,6 @@ public partial class MainWindow : Window
         if (parts.Count == 0) parts.Add("quota ok");
 
         Title = $"{Constants.WindowTitlePrefix} | updated {stamp} | quota {_settings.QuotaInterval}s | {string.Join(" | ", parts)}";
-        if (_notifyIcon is not null)
-        {
-            _notifyIcon.Text = Formatting.Truncate(Title, 120);
-        }
     }
 
     private static bool IsStale(DateTimeOffset? timestamp, int intervalSeconds)

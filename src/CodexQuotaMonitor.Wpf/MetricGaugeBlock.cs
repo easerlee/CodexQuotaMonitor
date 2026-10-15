@@ -47,7 +47,7 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var track = new SolidColorBrush(Formatting.ColorFromHex("#6A56616C"));
 
         var labelSize = Math.Clamp(height * 0.21, 7.0, 9.2);
-        var detailSize = Math.Clamp(height * 0.195, 6.8, 8.6);
+        var detailSize = Math.Clamp(height * 0.24, 8.4, 10.8);
         DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
         DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, muted, dpi);
 

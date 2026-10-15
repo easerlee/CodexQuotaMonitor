@@ -33,7 +33,7 @@
     <Border x:Name="OuterBorder"
             Margin="1"
             CornerRadius="8"
-            Background="#E6202428"
+            Background="#B3202428"
             BorderBrush="#70FFFFFF"
             BorderThickness="1">
         <Grid>

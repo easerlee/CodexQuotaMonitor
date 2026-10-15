@@ -115,7 +115,6 @@ public partial class App : System.Windows.Application
         Console.WriteLine($"codex_home={codexHome}");
         Console.WriteLine($"codex_exe={(string.IsNullOrWhiteSpace(codexExe) ? "not found" : codexExe)}");
         Console.WriteLine($"quota_interval={settings.QuotaInterval}");
-        Console.WriteLine($"tray={(!settings.NoTray)}");
         var placement = CodexQuotaMonitor.Wpf.MainWindow.ResolveTaskbarPlacement(settings.WindowWidth);
         Console.WriteLine($"placement={placement.X},{placement.Y},{placement.Width}x{placement.Height}");
         if (NativeMethods.TryGetTaskbarRect(out var edge, out var rect))

@@ -95,7 +95,6 @@ static void TestSettings()
         File.WriteAllText(path, """
             {
               "quota_interval": 60,
-              "no_tray": true,
               "window_width": 336,
               "red_threshold": 10,
               "amber_threshold": 25
@@ -103,13 +102,11 @@ static void TestSettings()
             """);
         var loaded = SettingsStore.Load(path);
         Equal(60, loaded.QuotaInterval, "loaded quota interval");
-        Equal(true, loaded.NoTray, "loaded no tray");
         Equal(260, loaded.WindowWidth, "floating-card width migration");
 
-        var cli = CliOptions.Parse(["--quota-interval", "300", "--tray"]);
+        var cli = CliOptions.Parse(["--quota-interval", "300"]);
         var merged = SettingsStore.ApplyCliOverrides(loaded, cli);
         Equal(300, merged.QuotaInterval, "cli quota override");
-        Equal(false, merged.NoTray, "cli tray override");
 
         File.WriteAllText(path, "{ broken json");
         var fallback = SettingsStore.Load(path);
@@ -186,18 +183,13 @@ static void TestArguments(){
         "--check",
         "--codex-home", "C:\\CodexHome\\.codex",
         "--codex-exe", "C:\\Tools\\codex.exe",
-        "--quota-interval", "600",
-        "--no-tray"
+        "--quota-interval", "600"
     ]);
     Equal(true, options.Check, "check flag");
     Equal(false, options.Once, "once flag");
     Equal("C:\\CodexHome\\.codex", options.CodexHome, "codex home");
     Equal("C:\\Tools\\codex.exe", options.CodexExe, "codex exe");
     Equal(600, options.QuotaInterval, "quota interval");
-    Equal(true, options.NoTray, "no tray");
-
-    var tray = CliOptions.Parse(["--tray"]);
-    Equal(false, tray.NoTray, "tray override");
 }
 
 static void Equal<T>(T expected, T actual, string label)
