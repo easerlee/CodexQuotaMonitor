@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly RefreshStatusBlock _refreshStatus;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
+    private Forms.ToolStripMenuItem? _autostartItem;
     private Forms.NotifyIcon? _notifyIcon;
     private System.Drawing.Icon? _trayIcon;
     private AppSettings _settings;
@@ -121,6 +122,7 @@ public partial class MainWindow : Window
         _menu.Opening += (_, _) =>
         {
             _menuVisible = true;
+            UpdateMenuChecks();
         };
         _menu.Opened += (_, _) =>
         {
@@ -134,13 +136,16 @@ public partial class MainWindow : Window
             ForceTopmost();
         };
         _menu.AutoClose = true;
-        _menu.Items.Add("Refresh now", null, (_, _) => RefreshNow());
-        _menu.Items.Add("Snap beside tray icons", null, (_, _) => SnapToTaskbar());
-        _menu.Items.Add(new Forms.ToolStripMenuItem(_settings.NoTray ? "Tray icon: off" : "Tray icon: on") { Enabled = false });
+        _menu.Items.Add("立即刷新", null, (_, _) => RefreshNow());
+        _menu.Items.Add("重新贴靠到托盘左侧", null, (_, _) => SnapToTaskbar());
+        _autostartItem = new Forms.ToolStripMenuItem("开机自动启动") { CheckOnClick = false };
+        _autostartItem.Click += (_, _) => ToggleAutostart();
+        _menu.Items.Add(_autostartItem);
+        _menu.Items.Add(new Forms.ToolStripMenuItem(_settings.NoTray ? "托盘图标：关" : "托盘图标：开") { Enabled = false });
         _menu.Items.Add(new Forms.ToolStripSeparator());
 
-        var quotaMenu = new Forms.ToolStripMenuItem("Quota interval");
-        foreach (var (label, seconds) in new[] { ("1 min", 60), ("3 min", 180), ("5 min", 300), ("10 min", 600), ("15 min", 900) })
+        var quotaMenu = new Forms.ToolStripMenuItem("刷新间隔");
+        foreach (var (label, seconds) in new[] { ("1 分钟", 60), ("3 分钟", 180), ("5 分钟", 300), ("10 分钟", 600), ("15 分钟", 900) })
         {
             var item = new Forms.ToolStripMenuItem(label) { Tag = seconds, CheckOnClick = false };
             item.Click += (_, _) => SetQuotaInterval(seconds);
@@ -149,8 +154,16 @@ public partial class MainWindow : Window
         }
         _menu.Items.Add(quotaMenu);
         _menu.Items.Add(new Forms.ToolStripSeparator());
-        _menu.Items.Add("Exit", null, (_, _) => RequestExit());
+        _menu.Items.Add("退出", null, (_, _) => RequestExit());
         UpdateMenuChecks();
+    }
+
+    private void ToggleAutostart()
+    {
+        if (StartupRegistration.SetEnabled(!StartupRegistration.IsEnabled(), _logger))
+        {
+            UpdateMenuChecks();
+        }
     }
 
     private void SetupTray()
@@ -482,6 +495,11 @@ public partial class MainWindow : Window
         foreach (var item in _quotaIntervalItems)
         {
             item.Checked = item.Tag is int seconds && seconds == _settings.QuotaInterval;
+        }
+
+        if (_autostartItem is not null)
+        {
+            _autostartItem.Checked = StartupRegistration.IsEnabled();
         }
     }
 

@@ -8,6 +8,7 @@ var tests = new (string Name, Action Body)[]
     ("settings defaults, JSON load, CLI override, corrupt fallback", TestSettings),
     ("formatting helpers", TestFormatting),
     ("taskbar overlay placement", TestTaskbarPlacement),
+    ("autostart registry Run entry", TestAutostartRegistration),
     ("argument handling", TestArguments)
 };
 
@@ -149,8 +150,38 @@ static void TestTaskbarPlacement()
     Equal(new TaskbarPlacement(0, 1032, 260, 48), noRoomForTrayAnchor, "tray anchor falls back to taskbar left");
 }
 
-static void TestArguments()
+static void TestAutostartRegistration()
 {
+    const string scratch = "CodexQuotaMonitorNativeSelfTest";
+    var logger = new SimpleLogger(Path.Combine(Path.GetTempPath(), "codex-quota-autostart-test.log"));
+    try
+    {
+        StartupRegistration.SetEnabled(false, logger, scratch);
+        Equal(false, StartupRegistration.IsEnabled(scratch), "autostart starts disabled");
+
+        Equal(true, StartupRegistration.SetEnabled(true, logger, scratch), "enable autostart");
+        Equal(true, StartupRegistration.IsEnabled(scratch), "autostart reports enabled");
+
+        using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Run"))
+        {
+            var value = key?.GetValue(scratch) as string;
+            if (value is null || !value.StartsWith('"') || !value.EndsWith('"'))
+            {
+                throw new InvalidOperationException($"autostart command must be a quoted path, got: {value}");
+            }
+        }
+
+        Equal(true, StartupRegistration.SetEnabled(false, logger, scratch), "disable autostart");
+        Equal(false, StartupRegistration.IsEnabled(scratch), "autostart reports disabled");
+    }
+    finally
+    {
+        StartupRegistration.SetEnabled(false, logger, scratch);
+    }
+}
+
+static void TestArguments(){
     var options = CliOptions.Parse([
         "--check",
         "--codex-home", "C:\\CodexHome\\.codex",
