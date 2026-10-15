@@ -32,15 +32,10 @@
 
     <Border x:Name="OuterBorder"
             Margin="1"
-            CornerRadius="8"
-            Background="#B3202428"
-            BorderBrush="#70FFFFFF"
+            Background="Transparent"
+            BorderBrush="Transparent"
             BorderThickness="1">
         <Grid>
-            <Border Margin="1"
-                    CornerRadius="7"
-                    BorderBrush="#2EFFFFFF"
-                    BorderThickness="1,1,0,0" />
             <Grid x:Name="RootGrid" Margin="3,2,3,2" />
         </Grid>
     </Border>

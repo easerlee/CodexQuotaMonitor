@@ -157,7 +157,6 @@ public partial class App : System.Windows.Application
             NativeMethods.ShowWindow(hwnd, NativeMethods.SW_SHOWNOACTIVATE);
             NativeMethods.ApplyOverlayStyles(hwnd);
             NativeMethods.AttachToTaskbar(hwnd);
-            NativeMethods.EnableFrostedBackdrop(hwnd);
             var placement = CodexQuotaMonitor.Wpf.MainWindow.ResolveTaskbarPlacement(Constants.DefaultWidth);
             NativeMethods.SetTopmostPosition(hwnd, placement.X, placement.Y, placement.Width, placement.Height);
             NativeMethods.SetTopmostNoActivate(hwnd);

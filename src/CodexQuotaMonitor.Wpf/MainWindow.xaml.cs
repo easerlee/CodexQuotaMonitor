@@ -89,9 +89,9 @@ public partial class MainWindow : Window
         stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
         stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
 
-        var line = new Border { Background = new SolidColorBrush(Formatting.ColorFromHex("#38FFFFFF")) };
+        var line = new Border { Background = new SolidColorBrush(Formatting.SeparatorLine) };
         Grid.SetRow(line, 0);
-        var light = new Border { Background = new SolidColorBrush(Formatting.ColorFromHex("#8794A2")) };
+        var light = new Border { Background = new SolidColorBrush(Formatting.Idle) };
         Grid.SetRow(light, 2);
 
         stack.Children.Add(line);
@@ -177,10 +177,6 @@ public partial class MainWindow : Window
         _hwnd = new WindowInteropHelper(this).Handle;
         NativeMethods.ApplyOverlayStyles(_hwnd);
         NativeMethods.AttachToTaskbar(_hwnd);
-        if (!NativeMethods.EnableFrostedBackdrop(_hwnd))
-        {
-            _logger.Warning("native frosted backdrop is unavailable; using translucent WPF fallback");
-        }
         SnapToTaskbar();
         ForceTopmost();
     }
@@ -369,16 +365,16 @@ public partial class MainWindow : Window
 
     private void RenderStatusLight()
     {
-        var accent = _quotaInFlight || IsStale(_quotaLastSuccessAt, _settings.QuotaInterval)
-            ? "#FFC857"
+        var state = _quotaInFlight || IsStale(_quotaLastSuccessAt, _settings.QuotaInterval)
+            ? Formatting.Warn
             : _lastQuota is null
-                ? "#8794A2"
+                ? Formatting.Idle
                 : _quotaLastError is not null && _quotaLastSuccessAt.HasValue
-                    ? "#FFC857"
+                    ? Formatting.Warn
                     : _lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue
-                        ? "#FF6B81"
-                        : "#2DD4A8";
-        _statusLight.Background = new SolidColorBrush(Formatting.ColorFromHex(accent));
+                        ? Formatting.Fail
+                        : Formatting.Ok;
+        _statusLight.Background = new SolidColorBrush(state);
     }
 
     private void UpdateTitle()

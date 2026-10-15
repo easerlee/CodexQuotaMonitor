@@ -42,9 +42,9 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var accentColor = Formatting.ColorForRemaining(_remaining, _settings);
         var accent = new SolidColorBrush(accentColor);
-        var primary = new SolidColorBrush(Formatting.ColorFromHex("#F4F6F8"));
-        var muted = new SolidColorBrush(Formatting.ColorFromHex("#A2ACB7"));
-        var track = new SolidColorBrush(Formatting.ColorFromHex("#6A56616C"));
+        var primary = new SolidColorBrush(Formatting.PrimaryText);
+        var muted = new SolidColorBrush(Formatting.DetailText);
+        var track = new SolidColorBrush(Formatting.GaugeTrack);
 
         var labelSize = Math.Clamp(height * 0.21, 7.0, 9.2);
         var detailSize = Math.Clamp(height * 0.23, 8.4, 10.4);
