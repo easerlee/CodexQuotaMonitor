@@ -276,6 +276,18 @@ public partial class MainWindow : Window
         System.Windows.Application.Current.Shutdown();
     }
 
+    // Left click refreshes on the spot. While the menu is open the click only dismisses it.
+    private void OnMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_menuVisible)
+        {
+            return;
+        }
+
+        ForceTopmost();
+        RefreshNow();
+    }
+
     private void OnMouseRightButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         ForceTopmost();

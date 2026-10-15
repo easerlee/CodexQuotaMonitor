@@ -21,6 +21,7 @@
         Loaded="OnLoaded"
         SourceInitialized="OnSourceInitialized"
         Closing="OnClosing"
+        MouseLeftButtonUp="OnMouseLeftButtonUp"
         MouseRightButtonUp="OnMouseRightButtonUp">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
