@@ -40,10 +40,14 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var track = new SolidColorBrush(Formatting.GaugeTrack);
         var accent = new SolidColorBrush(Formatting.ColorForRemaining(_remaining, _settings));
 
+        // Centre the glyphs themselves (not the line box) on the bar, and left-align the
+        // ink so every row starts at the same x.
         var label = MakeText(_title, Formatting.TextSize(height), FontWeights.Bold, primary, dpi);
-        dc.DrawText(label, new Point(4, Math.Max(0, (height - label.Height) / 2)));
+        var ink = label.BuildGeometry(new Point(0, 0)).Bounds;
+        dc.DrawText(label, new Point(4 - ink.Left, (height - ink.Height) / 2 - ink.Top));
 
-        var barLeft = 4 + label.WidthIncludingTrailingWhitespace + 5;
+        // Both rows measure the same advance, so the bars share one left edge and length.
+        var barLeft = 4 + Math.Ceiling(label.Width) + 5;
         var barWidth = width - 2 - barLeft;
         if (barWidth < 6)
         {

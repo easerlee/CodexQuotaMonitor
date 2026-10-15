@@ -76,7 +76,7 @@ public partial class MainWindow : Window
             CornerRadius = new CornerRadius(3),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 3, 0),
+            Margin = new Thickness(0, 0, 2, 0),
             Background = new SolidColorBrush(Formatting.Idle),
             IsHitTestVisible = false
         };
