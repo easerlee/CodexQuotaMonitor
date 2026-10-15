@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
     private readonly List<Forms.ToolStripItem> _accountRows = new();
+    private Forms.ToolStripItem? _accountBlockAnchor;
     private AppSettings _settings;
     private IntPtr _hwnd;
     private QuotaSnapshot? _lastQuota;
@@ -154,6 +155,10 @@ public partial class MainWindow : Window
             _quotaIntervalItems.Add(item);
         }
 
+        // Account blocks are inserted in front of this separator, so it marks where they end
+        // and keeps a line between the last account and 设置.
+        _accountBlockAnchor = new Forms.ToolStripSeparator();
+        _menu.Items.Add(_accountBlockAnchor);
         _menu.Items.Add(settingsMenu);
         _menu.Items.Add(new Forms.ToolStripSeparator());
         _menu.Items.Add("退出", null, (_, _) => RequestExit());
@@ -178,7 +183,7 @@ public partial class MainWindow : Window
         var records = _accountHistory.Load()
             .OrderByDescending(record => record.LastSeenAt)
             .ToList();
-        var insertAt = Math.Max(0, _menu.Items.Count - 4);
+        var insertAt = _accountBlockAnchor is null ? 0 : _menu.Items.IndexOf(_accountBlockAnchor);
         foreach (var row in BuildAccountRows(records, identity))
         {
             _menu.Items.Insert(insertAt++, row);
