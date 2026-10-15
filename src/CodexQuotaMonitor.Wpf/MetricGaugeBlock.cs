@@ -43,13 +43,12 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var accentColor = Formatting.ColorForRemaining(_remaining, _settings);
         var accent = new SolidColorBrush(accentColor);
         var primary = new SolidColorBrush(Formatting.PrimaryText);
-        var muted = new SolidColorBrush(Formatting.DetailText);
         var track = new SolidColorBrush(Formatting.GaugeTrack);
 
         var labelSize = Math.Clamp(height * 0.27, 9.0, 11.5);
         var detailSize = Math.Clamp(height * 0.23, 8.4, 10.4);
         DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
-        DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, muted, dpi);
+        DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, primary, dpi);
 
         var gaugeSize = Math.Clamp(height - 3, 22.0, 32.0);
         // The ring hugs the text on its left instead of the cell edge.
@@ -80,7 +79,7 @@ public sealed class MetricGaugeBlock : FrameworkElement
             new Rect(gaugeX, gaugeY, gaugeSize, gaugeSize),
             Math.Clamp(gaugeSize * 0.43, 10.0, 16.0),
             FontWeights.Bold,
-            _remaining.HasValue ? accent : muted,
+            _remaining.HasValue ? accent : primary,
             dpi);
     }
 

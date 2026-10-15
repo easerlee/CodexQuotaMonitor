@@ -54,8 +54,6 @@ public static class Formatting
 
     public static System.Windows.Media.Color PrimaryText => ColorFromHex(LightTaskbar ? "#1B2027" : "#F4F6F8");
 
-    public static System.Windows.Media.Color DetailText => ColorFromHex(LightTaskbar ? "#4B5563" : "#A2ACB7");
-
     public static System.Windows.Media.Color GaugeTrack => ColorFromHex(LightTaskbar ? "#33000000" : "#6A56616C");
 
     public static System.Windows.Media.Color SeparatorLine => ColorFromHex(LightTaskbar ? "#59000000" : "#38FFFFFF");
