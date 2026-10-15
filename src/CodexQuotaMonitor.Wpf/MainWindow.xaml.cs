@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _menuDismissTimer = new();
     private readonly MetricGaugeBlock _quota5h;
     private readonly MetricGaugeBlock _quotaWeek;
-    private readonly Border _separator;
+    private readonly Border _statusLight;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _quota5h = AddGaugeBlock("5H", 0);
         _quotaWeek = AddGaugeBlock("WK", 1);
-        _separator = AddSeparator(0);
+        _statusLight = AddStatusLight(0);
 
         BuildMenu();
         ConfigureTimers();
@@ -70,21 +70,32 @@ public partial class MainWindow : Window
         return block;
     }
 
-    // The separator doubles as the reading-state indicator: its colour reports connectivity.
-    private Border AddSeparator(int column)
+    // The separator reads like an exclamation mark: a 2px line in the card's own colour,
+    // a 2px gap, then a 2px square whose colour reports the reading state.
+    private Border AddStatusLight(int column)
     {
-        var separator = new Border
+        var stack = new Grid
         {
             Width = 2,
             Margin = new Thickness(0, 5, 0, 5),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
-            Background = new SolidColorBrush(Formatting.ColorFromHex("#8794A2")),
             IsHitTestVisible = false
         };
-        Grid.SetColumn(separator, column);
-        RootGrid.Children.Add(separator);
-        return separator;
+        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2) });
+        stack.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2) });
+
+        var line = new Border { Background = new SolidColorBrush(Formatting.ColorFromHex("#38FFFFFF")) };
+        Grid.SetRow(line, 0);
+        var light = new Border { Background = new SolidColorBrush(Formatting.ColorFromHex("#8794A2")) };
+        Grid.SetRow(light, 2);
+
+        stack.Children.Add(line);
+        stack.Children.Add(light);
+        Grid.SetColumn(stack, column);
+        RootGrid.Children.Add(stack);
+        return light;
     }
 
     private void ConfigureTimers()
@@ -284,13 +295,13 @@ public partial class MainWindow : Window
                 _quotaPendingRefresh = true;
             }
             UpdateTitle();
-            RenderStatusLine();
+            RenderStatusLight();
             return;
         }
 
         _quotaInFlight = true;
         UpdateTitle();
-        RenderStatusLine();
+        RenderStatusLight();
         _ = Task.Run(async () => await _quotaReader.ReadAsync())
             .ContinueWith(task => Dispatcher.Invoke(() => HandleQuotaResult(task)));
     }
@@ -328,7 +339,7 @@ public partial class MainWindow : Window
     private void Render()
     {
         RenderQuota();
-        RenderStatusLine();
+        RenderStatusLight();
         UpdateTitle();
     }
 
@@ -353,7 +364,7 @@ public partial class MainWindow : Window
         _quotaWeek.SetMetric(weekly?.RemainingPercent, weekly is null ? "unavail" : Formatting.Countdown(weekly.ResetsAt), _settings);
     }
 
-    private void RenderStatusLine()
+    private void RenderStatusLight()
     {
         var accent = _quotaInFlight || IsStale(_quotaLastSuccessAt, _settings.QuotaInterval)
             ? "#FFC857"
@@ -364,7 +375,7 @@ public partial class MainWindow : Window
                     : _lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue
                         ? "#FF6B81"
                         : "#2DD4A8";
-        _separator.Background = new SolidColorBrush(Formatting.ColorFromHex(accent));
+        _statusLight.Background = new SolidColorBrush(Formatting.ColorFromHex(accent));
     }
 
     private void UpdateTitle()
