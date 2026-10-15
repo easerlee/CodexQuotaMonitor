@@ -9,7 +9,7 @@ public static class Constants
 
     // Each cell keeps the drawable width it had; the gaps around the indicator line are
     // wider now, so the card is simply that little bit wider too.
-    public const int CellSlotWidth = 78;
+    public const int CellSlotWidth = 82;
     public const int CardChrome = 10;
     public const int SeparatorGapLeft = 8;
     public const int SeparatorGapRight = 10;

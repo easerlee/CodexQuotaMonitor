@@ -1,7 +1,17 @@
 namespace CodexQuotaMonitor.Wpf;
 
+using System.Globalization;
+
 public static class Formatting
 {
+    // Local clock time the window resets, e.g. "15:20".
+    public static string ResetClock(long? epochSeconds)
+    {
+        return epochSeconds.HasValue
+            ? DateTimeOffset.FromUnixTimeSeconds(epochSeconds.Value).ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)
+            : "--:--";
+    }
+
     public static string Countdown(long? epochSeconds)
     {
         if (!epochSeconds.HasValue)

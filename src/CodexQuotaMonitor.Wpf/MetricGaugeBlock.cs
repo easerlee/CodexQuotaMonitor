@@ -45,14 +45,15 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var primary = new SolidColorBrush(Formatting.PrimaryText);
         var track = new SolidColorBrush(Formatting.GaugeTrack);
 
-        var labelSize = Math.Clamp(height * 0.27, 9.0, 11.5);
-        var detailSize = Math.Clamp(height * 0.23, 8.4, 10.4);
-        DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
-        DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, primary, dpi);
-
-        var gaugeSize = Math.Clamp(height - 3, 22.0, 32.0);
+        var gaugeSize = Math.Clamp(height - 3, 22.0, 30.0);
         // The ring hugs the text on its left instead of the cell edge.
         var gaugeX = width - gaugeSize - 4.0;
+
+        var labelSize = Math.Clamp(height * 0.27, 9.0, 11.5);
+        var detailSize = Math.Clamp(height * 0.26, 9.0, 11.5);
+        DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
+        DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, primary, dpi, gaugeX - 6.0);
+
         var gaugeY = (height - gaugeSize) / 2.0;
         var center = new Point(gaugeX + gaugeSize / 2.0, gaugeY + gaugeSize / 2.0);
         var stroke = Math.Clamp(gaugeSize * 0.09, 2.0, 3.2);
@@ -113,9 +114,26 @@ public sealed class MetricGaugeBlock : FrameworkElement
         return new Point(center.X + radius * Math.Cos(radians), center.Y + radius * Math.Sin(radians));
     }
 
-    private static void DrawText(DrawingContext dc, string text, double x, double y, double size, FontWeight weight, Brush brush, double dpi)
+    // maxWidth keeps the detail line out of the ring's way; longer text is ellipsised.
+    private static void DrawText(
+        DrawingContext dc,
+        string text,
+        double x,
+        double y,
+        double size,
+        FontWeight weight,
+        Brush brush,
+        double dpi,
+        double maxWidth = double.PositiveInfinity)
     {
-        dc.DrawText(MakeText(text, size, weight, brush, dpi), new Point(x, y));
+        var formatted = MakeText(text, size, weight, brush, dpi);
+        if (!double.IsPositiveInfinity(maxWidth))
+        {
+            formatted.MaxTextWidth = Math.Max(1.0, maxWidth);
+            formatted.Trimming = TextTrimming.CharacterEllipsis;
+        }
+
+        dc.DrawText(formatted, new Point(x, y));
     }
 
     private static void DrawCenteredText(DrawingContext dc, string text, Rect bounds, double size, FontWeight weight, Brush brush, double dpi)

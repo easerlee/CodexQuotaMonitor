@@ -359,7 +359,9 @@ public partial class MainWindow : Window
 
         var fiveHour = _lastQuota.FiveHour;
         var weekly = _lastQuota.Weekly;
-        _quota5h.SetMetric(fiveHour?.RemainingPercent, fiveHour is null ? "inactive" : Formatting.Countdown(fiveHour.ResetsAt), _settings);
+        // The 5h line shows the clock time it resets, which reads better than a countdown;
+        // the weekly line keeps the countdown.
+        _quota5h.SetMetric(fiveHour?.RemainingPercent, fiveHour is null ? "inactive" : Formatting.ResetClock(fiveHour.ResetsAt), _settings);
         _quotaWeek.SetMetric(weekly?.RemainingPercent, weekly is null ? "unavail" : Formatting.Countdown(weekly.ResetsAt), _settings);
     }
 

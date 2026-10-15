@@ -124,6 +124,13 @@ static void TestFormatting()
     Equal("abcdefg...", Formatting.Truncate("abcdefghijk", 10), "truncate long");
     Equal("--", Formatting.RemainingText(null), "remaining missing");
     Equal("43", Formatting.RemainingText(42.75), "remaining percent");
+
+    Equal("--:--", Formatting.ResetClock(null), "reset clock missing");
+    var epoch = 1_800_000_000L;
+    Equal(
+        DateTimeOffset.FromUnixTimeSeconds(epoch).ToLocalTime().ToString("HH:mm"),
+        Formatting.ResetClock(epoch),
+        "reset clock format");
 }
 
 static void TestTaskbarPlacement()
