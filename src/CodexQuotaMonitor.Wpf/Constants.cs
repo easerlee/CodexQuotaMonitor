@@ -9,7 +9,7 @@ public static class Constants
 
     // Each metric cell keeps the width it had when the card still had a third slot;
     // the card just got narrower instead of the cells growing.
-    public const int CellWidth = 81;
+    public const int CellWidth = 72;
     public const int CardChrome = 10;
     public const int DefaultWidth = 2 * CellWidth + CardChrome;
     public const int DefaultHeight = 48;

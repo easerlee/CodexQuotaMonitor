@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _menuDismissTimer = new();
     private readonly MetricGaugeBlock _quota5h;
     private readonly MetricGaugeBlock _quotaWeek;
-    private readonly System.Windows.Shapes.Ellipse _statusDot;
+    private readonly Border _separator;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
@@ -52,19 +52,7 @@ public partial class MainWindow : Window
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _quota5h = AddGaugeBlock("5H", 0);
         _quotaWeek = AddGaugeBlock("WK", 1);
-        AddSeparator(0);
-
-        _statusDot = new System.Windows.Shapes.Ellipse
-        {
-            Width = 5,
-            Height = 5,
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-            VerticalAlignment = System.Windows.VerticalAlignment.Top,
-            Margin = new Thickness(0, 4, 4, 0),
-            IsHitTestVisible = false
-        };
-        Grid.SetColumnSpan(_statusDot, 2);
-        RootGrid.Children.Add(_statusDot);
+        _separator = AddSeparator(0);
 
         BuildMenu();
         ConfigureTimers();
@@ -82,19 +70,21 @@ public partial class MainWindow : Window
         return block;
     }
 
-    private void AddSeparator(int column)
+    // The separator doubles as the reading-state indicator: its colour reports connectivity.
+    private Border AddSeparator(int column)
     {
         var separator = new Border
         {
-            Width = 1,
+            Width = 2,
             Margin = new Thickness(0, 5, 0, 5),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
-            Background = new SolidColorBrush(Formatting.ColorFromHex("#38FFFFFF")),
+            Background = new SolidColorBrush(Formatting.ColorFromHex("#8794A2")),
             IsHitTestVisible = false
         };
         Grid.SetColumn(separator, column);
         RootGrid.Children.Add(separator);
+        return separator;
     }
 
     private void ConfigureTimers()
@@ -294,13 +284,13 @@ public partial class MainWindow : Window
                 _quotaPendingRefresh = true;
             }
             UpdateTitle();
-            RenderStatusDot();
+            RenderStatusLine();
             return;
         }
 
         _quotaInFlight = true;
         UpdateTitle();
-        RenderStatusDot();
+        RenderStatusLine();
         _ = Task.Run(async () => await _quotaReader.ReadAsync())
             .ContinueWith(task => Dispatcher.Invoke(() => HandleQuotaResult(task)));
     }
@@ -338,7 +328,7 @@ public partial class MainWindow : Window
     private void Render()
     {
         RenderQuota();
-        RenderStatusDot();
+        RenderStatusLine();
         UpdateTitle();
     }
 
@@ -363,7 +353,7 @@ public partial class MainWindow : Window
         _quotaWeek.SetMetric(weekly?.RemainingPercent, weekly is null ? "unavail" : Formatting.Countdown(weekly.ResetsAt), _settings);
     }
 
-    private void RenderStatusDot()
+    private void RenderStatusLine()
     {
         var accent = _quotaInFlight || IsStale(_quotaLastSuccessAt, _settings.QuotaInterval)
             ? "#FFC857"
@@ -374,7 +364,7 @@ public partial class MainWindow : Window
                     : _lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue
                         ? "#FF6B81"
                         : "#2DD4A8";
-        _statusDot.Fill = new SolidColorBrush(Formatting.ColorFromHex(accent));
+        _separator.Background = new SolidColorBrush(Formatting.ColorFromHex(accent));
     }
 
     private void UpdateTitle()
