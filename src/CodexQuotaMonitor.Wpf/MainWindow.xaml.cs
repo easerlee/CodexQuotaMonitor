@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _menuDismissTimer = new();
     private readonly MetricGaugeBlock _quota5h;
     private readonly MetricGaugeBlock _quotaWeek;
-    private readonly TextBlock _resetText;
+    private readonly TextRowBlock _resetText;
     private readonly Border _statusLight;
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
@@ -58,14 +58,7 @@ public partial class MainWindow : Window
         _quota5h = AddGaugeBlock("5H", 0);
         _quotaWeek = AddGaugeBlock("WK", 1);
 
-        _resetText = new TextBlock
-        {
-            Margin = new Thickness(4, 0, 14, 0),
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Foreground = new SolidColorBrush(Formatting.PrimaryText),
-            FontFamily = new System.Windows.Media.FontFamily(Constants.UiFont)
-        };
+        _resetText = new TextRowBlock();
         Grid.SetRow(_resetText, 2);
         RootGrid.Children.Add(_resetText);
 
@@ -345,9 +338,10 @@ public partial class MainWindow : Window
         _quotaWeek.SetMetric(weekly?.RemainingPercent, _settings);
 
         // Bottom line: the 5h reset clock and the weekly countdown side by side.
-        _resetText.Text = $"{Formatting.ResetClock(fiveHour?.ResetsAt)} / {Formatting.Countdown(weekly?.ResetsAt)}";
         var rowHeight = RootGrid.ActualHeight > 0 ? RootGrid.ActualHeight / 3.0 : Constants.DefaultHeight / 3.0;
-        _resetText.FontSize = Formatting.TextSize(rowHeight);
+        _resetText.SetText(
+            $"{Formatting.ResetClock(fiveHour?.ResetsAt)} / {Formatting.Countdown(weekly?.ResetsAt)}",
+            Formatting.TextSize(rowHeight));
     }
 
     private void RenderStatusLight()

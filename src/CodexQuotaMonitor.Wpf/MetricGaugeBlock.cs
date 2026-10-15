@@ -1,9 +1,5 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
-using Brush = System.Windows.Media.Brush;
-using FontFamily = System.Windows.Media.FontFamily;
-using Point = System.Windows.Point;
 
 namespace CodexQuotaMonitor.Wpf;
 
@@ -40,14 +36,13 @@ public sealed class MetricGaugeBlock : FrameworkElement
         var track = new SolidColorBrush(Formatting.GaugeTrack);
         var accent = new SolidColorBrush(Formatting.ColorForRemaining(_remaining, _settings));
 
-        // Centre the glyphs themselves (not the line box) on the bar, and left-align the
-        // ink so every row starts at the same x.
-        var label = MakeText(_title, Formatting.TextSize(height), FontWeights.Bold, primary, dpi);
-        var ink = label.BuildGeometry(new Point(0, 0)).Bounds;
-        dc.DrawText(label, new Point(4 - ink.Left, (height - ink.Height) / 2 - ink.Top));
+        // Fixed label column: both rows start their bar at exactly the same x, no matter
+        // how wide the glyphs or the fallback font happen to measure.
+        var textSize = Formatting.TextSize(height);
+        var label = OverlayText.Make(_title, textSize, FontWeights.Bold, primary, dpi);
+        OverlayText.DrawInkCentered(dc, label, 4, height);
 
-        // Both rows measure the same advance, so the bars share one left edge and length.
-        var barLeft = 4 + Math.Ceiling(label.Width) + 5;
+        var barLeft = 4 + Math.Ceiling(textSize * 1.2) + 5;
         var barWidth = width - 2 - barLeft;
         if (barWidth < 6)
         {
@@ -69,17 +64,5 @@ public sealed class MetricGaugeBlock : FrameworkElement
                 radius,
                 radius);
         }
-    }
-
-    private static FormattedText MakeText(string text, double size, FontWeight weight, Brush brush, double dpi)
-    {
-        return new FormattedText(
-            text,
-            CultureInfo.CurrentUICulture,
-            System.Windows.FlowDirection.LeftToRight,
-            new Typeface(new FontFamily(Constants.UiFont), FontStyles.Normal, weight, FontStretches.Normal),
-            size,
-            brush,
-            dpi);
     }
 }
