@@ -8,9 +8,6 @@ public sealed class AppSettings
     [JsonPropertyName("quota_interval")]
     public int QuotaInterval { get; set; } = Constants.DefaultQuotaIntervalSeconds;
 
-    [JsonPropertyName("window_width")]
-    public int WindowWidth { get; set; } = Constants.DefaultWidth;
-
     [JsonPropertyName("red_threshold")]
     public double RedThreshold { get; set; } = Constants.DefaultRedThreshold;
 
@@ -20,7 +17,6 @@ public sealed class AppSettings
     public AppSettings Clone() => new()
     {
         QuotaInterval = QuotaInterval,
-        WindowWidth = WindowWidth,
         RedThreshold = RedThreshold,
         AmberThreshold = AmberThreshold
     };
@@ -28,9 +24,6 @@ public sealed class AppSettings
     public void Normalize()
     {
         QuotaInterval = Math.Max(30, QuotaInterval);
-        WindowWidth = WindowWidth is < 220 or > 300
-            ? Constants.DefaultWidth
-            : WindowWidth;
         RedThreshold = Math.Clamp(RedThreshold, 0.0, 100.0);
         AmberThreshold = Math.Clamp(AmberThreshold, RedThreshold, 100.0);
     }

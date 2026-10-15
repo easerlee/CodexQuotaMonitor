@@ -95,14 +95,13 @@ static void TestSettings()
         File.WriteAllText(path, """
             {
               "quota_interval": 60,
-              "window_width": 336,
               "red_threshold": 10,
               "amber_threshold": 25
             }
             """);
         var loaded = SettingsStore.Load(path);
         Equal(60, loaded.QuotaInterval, "loaded quota interval");
-        Equal(260, loaded.WindowWidth, "floating-card width migration");
+        Equal(25.0, loaded.AmberThreshold, "loaded amber threshold");
 
         var cli = CliOptions.Parse(["--quota-interval", "300"]);
         var merged = SettingsStore.ApplyCliOverrides(loaded, cli);

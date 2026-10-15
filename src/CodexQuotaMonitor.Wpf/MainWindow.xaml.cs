@@ -45,7 +45,7 @@ public partial class MainWindow : Window
         _quotaReader = new QuotaReader(paths.ResolveCodexHome(options.CodexHome), options.CodexExe, logger);
 
         InitializeComponent();
-        Width = _settings.WindowWidth;
+        Width = Constants.DefaultWidth;
         Height = Constants.DefaultHeight;
 
         RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -446,7 +446,7 @@ public partial class MainWindow : Window
             NativeMethods.AttachToTaskbar(_hwnd);
         }
 
-        var placement = ResolveTaskbarPlacement(_settings.WindowWidth);
+        var placement = ResolveTaskbarPlacement(Constants.DefaultWidth);
         if (_hwnd == IntPtr.Zero)
         {
             Left = placement.X;

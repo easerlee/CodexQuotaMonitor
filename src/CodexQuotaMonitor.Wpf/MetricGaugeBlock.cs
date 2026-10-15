@@ -51,8 +51,8 @@ public sealed class MetricGaugeBlock : FrameworkElement
         DrawText(dc, _title, 4, 1, labelSize, FontWeights.Bold, primary, dpi);
         DrawText(dc, _detail, 4, height - detailSize - 2, detailSize, FontWeights.Normal, muted, dpi);
 
-        var gaugeSize = Math.Clamp(height - 3, 22.0, 38.0);
-        var gaugeX = width - gaugeSize - 2.0;
+        var gaugeSize = Math.Clamp(height - 3, 22.0, 34.0);
+        var gaugeX = width - gaugeSize - 1.0;
         var gaugeY = (height - gaugeSize) / 2.0;
         var center = new Point(gaugeX + gaugeSize / 2.0, gaugeY + gaugeSize / 2.0);
         var stroke = Math.Clamp(gaugeSize * 0.09, 2.0, 3.2);
