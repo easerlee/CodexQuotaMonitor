@@ -308,7 +308,7 @@ static void TestAccountHistory()
         }
 
         var seenLine = acct1.LastSeenAt.ToLocalTime().ToString("M/d HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-        Equal($"  {seenLine}", live[3], "reading-time line is left-aligned and unlabelled");
+        Equal(seenLine, live[3], "reading-time line is left-aligned with the account name");
 
         // A window whose reset time has passed must read 已重置, and the block must keep the
         // same width so the columns line up across accounts.

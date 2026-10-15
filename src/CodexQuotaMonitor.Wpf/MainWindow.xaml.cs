@@ -28,7 +28,6 @@ public partial class MainWindow : Window
     private readonly Forms.ContextMenuStrip _menu = new();
     private readonly List<Forms.ToolStripMenuItem> _quotaIntervalItems = new();
     private Forms.ToolStripMenuItem? _autostartItem;
-    private Forms.ToolStripLabel? _currentAccountItem;
     private readonly List<Forms.ToolStripItem> _accountRows = new();
     private AppSettings _settings;
     private IntPtr _hwnd;
@@ -133,9 +132,6 @@ public partial class MainWindow : Window
             ForceTopmost();
         };
         _menu.AutoClose = true;
-        _currentAccountItem = AccountLabel("当前账号：读取中…");
-        _menu.Items.Add(_currentAccountItem);
-        _menu.Items.Add(new Forms.ToolStripSeparator());
 
         // Everything except 退出 lives in 设置, so the first level stays about the account.
         // It opens leftwards: the card sits at the screen's right edge under the tray.
@@ -165,17 +161,11 @@ public partial class MainWindow : Window
         RebuildAccountViews();
     }
 
-    // The account blocks sit between the current-account line and the 设置/退出 tail, and are
-    // rebuilt whenever the menu opens so the list is never stale.
+    // The account blocks lead the menu and are rebuilt whenever it opens, so the list is
+    // never stale. They sit in front of the trailing 设置/退出 pair.
     private void RebuildAccountViews()
     {
         var identity = AccountIdentity.Read(_codexHome);
-        if (_currentAccountItem is not null)
-        {
-            _currentAccountItem.Text = identity is null
-                ? "当前账号：未读取到 auth.json"
-                : $"当前账号：{identity.Display}";
-        }
 
         foreach (var row in _accountRows)
         {
@@ -188,7 +178,7 @@ public partial class MainWindow : Window
         var records = _accountHistory.Load()
             .OrderByDescending(record => record.LastSeenAt)
             .ToList();
-        var insertAt = Math.Max(2, _menu.Items.Count - 4);
+        var insertAt = Math.Max(0, _menu.Items.Count - 4);
         foreach (var row in BuildAccountRows(records, identity))
         {
             _menu.Items.Insert(insertAt++, row);

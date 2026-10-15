@@ -82,9 +82,9 @@ public static class AccountRow
         return
         [
             current ? $"{name}  ← 当前" : name,
-            $"  {Pad("5H", LabelColumns)}{Pad(Value(record.FiveHourPercent, record.FiveHourResetsAt, now), ValueColumns)}{Pad(Reset(record.FiveHourResetsAt, now, weekly: false), ResetColumns)}",
-            $"  {Pad("周", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyResetsAt, now, weekly: true), ResetColumns)}",
-            $"  {seen}"
+            $"{Pad("5H", LabelColumns)}{Pad(Value(record.FiveHourPercent, record.FiveHourResetsAt, now), ValueColumns)}{Pad(Reset(record.FiveHourResetsAt, now, weekly: false), ResetColumns)}",
+            $"{Pad("周", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyResetsAt, now, weekly: true), ResetColumns)}",
+            seen
         ];
     }
 
