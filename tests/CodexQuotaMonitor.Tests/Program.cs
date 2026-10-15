@@ -291,7 +291,7 @@ static void TestAccountHistory()
 
         var acct1 = records.Single(r => r.AccountId == "acct-1");
         var live = AccountRow.Lines(acct1, now, current: true);
-        Equal(4, live.Count, "account block is the name plus three info lines");
+        Equal(3, live.Count, "account block is the name plus the two quota lines");
         if (!live[0].Contains("one") || !live[0].Contains("当前") || live[0].Contains("@"))
         {
             throw new InvalidOperationException($"name line looks wrong: {live[0]}");
@@ -306,9 +306,6 @@ static void TestAccountHistory()
         {
             throw new InvalidOperationException($"weekly line looks wrong: {live[2]}");
         }
-
-        var seenLine = acct1.LastSeenAt.ToLocalTime().ToString("M/d HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-        Equal($"{seenLine} 更新", live[3], "reading-time line says what the timestamp is");
 
         // A window whose reset time has passed must read 已重置, and the block must keep the
         // same width so the columns line up across accounts.

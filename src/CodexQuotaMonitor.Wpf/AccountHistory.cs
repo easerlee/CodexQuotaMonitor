@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 
 namespace CodexQuotaMonitor.Wpf;
@@ -67,8 +66,8 @@ public sealed class AccountHistoryStore
     }
 }
 
-// One menu block per account: the name, then 5H, weekly and the last reading time in three
-// lines underneath. Columns are padded in display columns so the wide "已重置" keeps them.
+// One menu block per account: the name, then 5H and weekly underneath. The columns are
+// padded in display columns so the wide "已重置" keeps them lined up.
 public static class AccountRow
 {
     private const int LabelColumns = 6;
@@ -78,13 +77,11 @@ public static class AccountRow
     public static IReadOnlyList<string> Lines(AccountRecord record, DateTimeOffset now, bool current)
     {
         var name = AccountIdentity.ShortName(record.Email, record.AccountId);
-        var seen = record.LastSeenAt.ToLocalTime().ToString("M/d HH:mm", CultureInfo.InvariantCulture);
         return
         [
             current ? $"{name}  ← 当前" : name,
             $"{Pad("5H", LabelColumns)}{Pad(Value(record.FiveHourPercent, record.FiveHourResetsAt, now), ValueColumns)}{Pad(Reset(record.FiveHourResetsAt, now, weekly: false), ResetColumns)}",
-            $"{Pad("WK", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyResetsAt, now, weekly: true), ResetColumns)}",
-            $"{seen} 更新"
+            $"{Pad("WK", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyResetsAt, now, weekly: true), ResetColumns)}"
         ];
     }
 
