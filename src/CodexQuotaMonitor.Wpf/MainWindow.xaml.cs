@@ -422,34 +422,36 @@ public partial class MainWindow : Window
 
     private void RenderRefreshStatus()
     {
-        var now = DateTimeOffset.Now;
+        // The status block shows the 5-hour reset countdown; the dot and status word still
+        // report how fresh the reading is.
+        var resetsAt = _lastQuota?.FiveHour?.ResetsAt;
         if (_quotaInFlight)
         {
-            _refreshStatus.SetStatus(_quotaLastSuccessAt, now, "SYNC", "#FFC857");
+            _refreshStatus.SetStatus(resetsAt, "SYNC", "#FFC857");
             return;
         }
         if (_lastQuota is null)
         {
-            _refreshStatus.SetStatus(null, now, "WAIT", "#8794A2");
+            _refreshStatus.SetStatus(null, "WAIT", "#8794A2");
             return;
         }
         if (_quotaLastError is not null && _quotaLastSuccessAt.HasValue)
         {
-            _refreshStatus.SetStatus(_quotaLastSuccessAt, now, "OLD", "#FFC857");
+            _refreshStatus.SetStatus(resetsAt, "OLD", "#FFC857");
             return;
         }
         if (_lastQuota.Error is not null && !_quotaLastSuccessAt.HasValue)
         {
-            _refreshStatus.SetStatus(null, now, "ERR", "#FF6B81");
+            _refreshStatus.SetStatus(null, "ERR", "#FF6B81");
             return;
         }
         if (IsStale(_quotaLastSuccessAt, _settings.QuotaInterval))
         {
-            _refreshStatus.SetStatus(_quotaLastSuccessAt, now, "STALE", "#FFC857");
+            _refreshStatus.SetStatus(resetsAt, "STALE", "#FFC857");
             return;
         }
 
-        _refreshStatus.SetStatus(_quotaLastSuccessAt, now, "", "#2DD4A8");
+        _refreshStatus.SetStatus(resetsAt, "", "#2DD4A8");
     }
 
     private void UpdateTitle()
