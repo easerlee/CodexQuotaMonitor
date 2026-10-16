@@ -135,6 +135,22 @@ static void TestFormatting()
         DateTimeOffset.FromUnixTimeSeconds(epoch).ToLocalTime().ToString("HH:mm"),
         Formatting.ResetClock(epoch),
         "reset clock format");
+
+    // The 5h window only starts counting from first use, so a full window has no trustworthy
+    // reset time and must read 已重置 rather than 100% plus a bogus clock.
+    var now = DateTimeOffset.Now;
+    var future = now.AddHours(3).ToUnixTimeSeconds();
+    var past = now.AddMinutes(-5).ToUnixTimeSeconds();
+    Equal("已重置", Formatting.WindowReset(100, future, now, weekly: false), "full window reads 已重置");
+    Equal("已重置", Formatting.WindowReset(0, past, now, weekly: false), "expired window reads 已重置");
+    Equal(
+        Formatting.ResetClock(future),
+        Formatting.WindowReset(19, future, now, weekly: false),
+        "an active window still shows its clock");
+    Equal(
+        Formatting.Countdown(future),
+        Formatting.WindowReset(40, future, now, weekly: true),
+        "an active weekly window still counts down");
 }
 
 static void TestTaskbarPlacement()

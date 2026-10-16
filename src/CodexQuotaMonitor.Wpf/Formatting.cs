@@ -8,6 +8,30 @@ public static class Formatting
     // shorter taskbar keeps the three rows balanced.
     public static double TextSize(double rowHeight) => Math.Clamp(rowHeight * 0.78, 8.5, 12.0);
 
+    // A window carries no trustworthy reset time when it is full (the server only starts
+    // counting the 5h window from first use) or when its recorded reset time already passed.
+    public static bool WindowIsFresh(double? remainingPercent, long? resetsAt, DateTimeOffset now)
+    {
+        return (remainingPercent.HasValue && remainingPercent.Value >= 99.5) ||
+            (resetsAt.HasValue && resetsAt.Value <= now.ToUnixTimeSeconds());
+    }
+
+    // What to print for a window that has no live countdown.
+    public static string WindowReset(double? remainingPercent, long? resetsAt, DateTimeOffset now, bool weekly)
+    {
+        if (WindowIsFresh(remainingPercent, resetsAt, now))
+        {
+            return "已重置";
+        }
+
+        if (!resetsAt.HasValue)
+        {
+            return "--";
+        }
+
+        return weekly ? Countdown(resetsAt) : ResetClock(resetsAt);
+    }
+
     // Local clock time the window resets, e.g. "15:20".
     public static string ResetClock(long? epochSeconds)
     {

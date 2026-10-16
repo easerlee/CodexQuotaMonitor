@@ -457,10 +457,13 @@ public partial class MainWindow : Window
         _quota5h.SetMetric(fiveHour?.RemainingPercent, _settings);
         _quotaWeek.SetMetric(weekly?.RemainingPercent, _settings);
 
-        // Bottom line: the 5h reset clock and the weekly countdown side by side.
+        // Bottom line: the 5h reset clock and the weekly countdown side by side. A window that
+        // is full or already past its reset reads 已重置 instead of a meaningless time.
+        var now = DateTimeOffset.Now;
         var rowHeight = RootGrid.ActualHeight > 0 ? RootGrid.ActualHeight / 3.0 : Constants.DefaultHeight / 3.0;
         _resetText.SetText(
-            $"{Formatting.ResetClock(fiveHour?.ResetsAt)} / {Formatting.Countdown(weekly?.ResetsAt)}",
+            $"{Formatting.WindowReset(fiveHour?.RemainingPercent, fiveHour?.ResetsAt, now, weekly: false)} / " +
+            $"{Formatting.WindowReset(weekly?.RemainingPercent, weekly?.ResetsAt, now, weekly: true)}",
             Formatting.TextSize(rowHeight));
     }
 

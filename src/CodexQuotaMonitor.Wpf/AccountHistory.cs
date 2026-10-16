@@ -80,35 +80,25 @@ public static class AccountRow
         return
         [
             current ? $"{name}  ← 当前" : name,
-            $"{Pad("5H", LabelColumns)}{Pad(Value(record.FiveHourPercent, record.FiveHourResetsAt, now), ValueColumns)}{Pad(Reset(record.FiveHourResetsAt, now, weekly: false), ResetColumns)}",
-            $"{Pad("WK", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyResetsAt, now, weekly: true), ResetColumns)}"
+            $"{Pad("5H", LabelColumns)}{Pad(Value(record.FiveHourPercent, record.FiveHourResetsAt, now), ValueColumns)}{Pad(Reset(record.FiveHourPercent, record.FiveHourResetsAt, now, weekly: false), ResetColumns)}",
+            $"{Pad("WK", LabelColumns)}{Pad(Value(record.WeeklyPercent, record.WeeklyResetsAt, now), ValueColumns)}{Pad(Reset(record.WeeklyPercent, record.WeeklyResetsAt, now, weekly: true), ResetColumns)}"
         ];
     }
 
+    // A full window reads as 已重置 rather than a bare 100%: the server only starts counting
+    // the 5h window from first use, so both the percentage and its reset time mean nothing yet.
     private static string Value(double? percent, long? resetsAt, DateTimeOffset now)
     {
-        if (IsStale(resetsAt, now))
-        {
-            return "已重置";
-        }
-
-        return percent.HasValue ? $"{Math.Round(percent.Value):0}%" : "--";
+        return Formatting.WindowIsFresh(percent, resetsAt, now)
+            ? "已重置"
+            : percent.HasValue ? $"{Math.Round(percent.Value):0}%" : "--";
     }
 
-    private static string Reset(long? resetsAt, DateTimeOffset now, bool weekly)
+    private static string Reset(double? percent, long? resetsAt, DateTimeOffset now, bool weekly)
     {
-        // A window that has already rolled over has no meaningful countdown left.
-        if (!resetsAt.HasValue || IsStale(resetsAt, now))
-        {
-            return string.Empty;
-        }
-
-        return weekly ? Formatting.Countdown(resetsAt) : Formatting.ResetClock(resetsAt);
-    }
-
-    private static bool IsStale(long? resetsAt, DateTimeOffset now)
-    {
-        return resetsAt.HasValue && resetsAt.Value <= now.ToUnixTimeSeconds();
+        return Formatting.WindowIsFresh(percent, resetsAt, now)
+            ? string.Empty
+            : Formatting.WindowReset(percent, resetsAt, now, weekly);
     }
 
     private static string Pad(string text, int columns)
