@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly TextRowBlock _resetText;
     private readonly Border _statusLight;
     private readonly Popup _popup = new();
+    private readonly DispatcherTimer _menuGuardTimer = new();
     private QuotaMenu? _menu;
     private AppSettings _settings;
     private IntPtr _hwnd;
@@ -36,6 +37,7 @@ public partial class MainWindow : Window
     private bool _quotaInFlight;
     private bool _quotaPendingRefresh;
     private bool _menuVisible;
+    private bool _menuButtonWasUp = true;
     private bool _hiddenForFullscreen;
     private bool _isExiting;
 
@@ -104,12 +106,16 @@ public partial class MainWindow : Window
         _placementTimer.Interval = TimeSpan.FromSeconds(1);
         _placementTimer.Tick += (_, _) => SnapToTaskbar();
         _placementTimer.Start();
+
+        // Only runs while the panel is open. See MenuDismiss for why the panel watches the mouse
+        // itself instead of relying on the popup's own click-outside dismissal.
+        _menuGuardTimer.Interval = TimeSpan.FromMilliseconds(80);
+        _menuGuardTimer.Tick += (_, _) => CheckMenuDismiss();
     }
 
     // The panel is a WPF popup rather than a system menu so it can be the dark rounded card
-    // the design calls for. StaysOpen=false gives the usual click-anywhere-to-dismiss.
-    // Only the command rows close it: the three settings rows answer with a sliding control,
-    // so the panel has to stay open for that movement to be seen.
+    // the design calls for. Only the command rows close it: the three settings rows answer with
+    // a sliding control, so the panel has to stay open for that movement to be seen.
     private void BuildMenu()
     {
         _menu = new QuotaMenu(
@@ -128,13 +134,47 @@ public partial class MainWindow : Window
         _popup.Opened += (_, _) =>
         {
             _menuVisible = true;
+            // The panel is opened by a button release, so the next press is a fresh one.
+            _menuButtonWasUp = true;
+            _menuGuardTimer.Start();
             ForceTopmost();
         };
         _popup.Closed += (_, _) =>
         {
             _menuVisible = false;
+            _menuGuardTimer.Stop();
             ForceTopmost();
         };
+    }
+
+    private void CheckMenuDismiss()
+    {
+        var pressed = NativeMethods.MouseButtonDown();
+        var wasUp = _menuButtonWasUp;
+        _menuButtonWasUp = !pressed;
+        if (_menu is null || !MenuDismiss.ShouldClose(pressed, wasUp, CursorInsideMenu()))
+        {
+            return;
+        }
+
+        _popup.IsOpen = false;
+    }
+
+    // The panel is a real window of its own, so its own rectangle and the cursor are both read in
+    // raw screen pixels - no DPI conversion between the two.
+    private bool CursorInsideMenu()
+    {
+        if (_menu is null || PresentationSource.FromVisual(_menu) is not HwndSource source)
+        {
+            return false;
+        }
+
+        if (!NativeMethods.GetCursorPos(out var cursor) || !NativeMethods.GetWindowRect(source.Handle, out var rect))
+        {
+            return true;
+        }
+
+        return cursor.X >= rect.Left && cursor.X < rect.Right && cursor.Y >= rect.Top && cursor.Y < rect.Bottom;
     }
 
     // The card sits under the tray in the screen's bottom-right corner, so the panel opens up
@@ -197,6 +237,7 @@ public partial class MainWindow : Window
         _tickTimer.Stop();
         _topmostTimer.Stop();
         _placementTimer.Stop();
+        _menuGuardTimer.Stop();
         _popup.IsOpen = false;
 
         if (!_isExiting)

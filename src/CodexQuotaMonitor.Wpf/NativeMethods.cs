@@ -111,6 +111,27 @@ public static class NativeMethods
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int virtualKey);
 
+    public const int VK_LBUTTON = 0x01;
+    public const int VK_RBUTTON = 0x02;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern bool GetCursorPos(out POINT point);
+
+    // Any mouse button down anywhere on screen. The overlay window is WS_EX_NOACTIVATE and never
+    // activates, so a click in another application never shows up as a WPF input event: this is
+    // how the panel finds out the mouse went down outside it.
+    public static bool MouseButtonDown()
+    {
+        return (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0 || (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+    }
+
     public static IntPtr RootWindow(IntPtr hwnd)
     {
         var root = GetAncestor(hwnd, GA_ROOT);

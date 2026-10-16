@@ -293,14 +293,14 @@ public sealed class QuotaMenu : Border
 
     // Rows line up with the metric labels: the negative margin pulls the hover highlight out
     // past the content edge while the padding pushes the text back to the same x as 5H, so the
-    // text keeps its column and the highlight still has a margin around it.
+    // text keeps its column and the highlight keeps a 12px margin around the text.
     private static UIElement ActionRow(string text, Action action, bool danger = false, bool dim = false)
     {
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 8, 8, 8),
-            Margin = new Thickness(-8, 0, -8, 0),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(-12, 0, -12, 0),
             Cursor = Cursors.Hand,
             Background = Brushes.Transparent,
             Child = Text(text, dim ? Formatting.Popup.Dim : danger ? Formatting.Popup.Fail : Formatting.Popup.Text, 12.5)
@@ -352,10 +352,10 @@ public sealed class QuotaMenu : Border
             new SegmentedControl(["左", "右"], left ? 0 : 1, index => _setDisplaySide(index == 0 ? "left" : "right")));
     }
 
-    // The autostart row keeps the hover plate and the label column of the rows above, but ends
-    // in a switch instead of a check mark. The switch takes the state the registry actually
-    // ended up in rather than assuming the write worked, and the panel stays open so the knob
-    // is seen moving.
+    // The autostart row keeps the label column of the rows above and ends in a switch instead of
+    // a check mark - with no hover plate, since the switch is the affordance. The switch takes
+    // the state the registry actually ended up in rather than assuming the write worked, and the
+    // panel stays open so the knob is seen moving.
     private UIElement AutostartRow(bool autostart)
     {
         var toggle = new ToggleSwitch(autostart);
@@ -380,11 +380,10 @@ public sealed class QuotaMenu : Border
             Padding = new Thickness(8, 8, 8, 8),
             Margin = new Thickness(-8, 0, -8, 0),
             Cursor = Cursors.Hand,
+            // No hover plate on this row: the switch itself is the whole affordance.
             Background = Brushes.Transparent,
             Child = grid
         };
-        row.MouseEnter += (_, _) => row.Background = new SolidColorBrush(Formatting.Popup.Hover);
-        row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
         row.MouseLeftButtonUp += (_, _) => toggle.Set(_toggleAutostart());
         return row;
     }

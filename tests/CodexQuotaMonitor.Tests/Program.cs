@@ -12,6 +12,7 @@ var tests = new (string Name, Action Body)[]
     ("account identity from auth.json", TestAccountIdentity),
     ("account history store and rows", TestAccountHistory),
     ("panel account order", TestAccountOrder),
+    ("click outside closes the panel", TestMenuDismiss),
     ("stale codex.exe path is re-resolved", TestStaleCodexPath),
     ("autostart registry Run entry", TestAutostartRegistration),
     ("fullscreen detection", TestFullscreenDetector),
@@ -355,6 +356,17 @@ static void TestAccountOrder()
     var tieB = Record("tie-b", 30, now.AddHours(2).ToUnixTimeSeconds(), now.AddMinutes(-1));
     var tied = AccountOrder.Sort([tieA, tieB], null, now);
     Equal("tie-b", tied[0].AccountId, "ties break on the latest reading");
+}
+
+static void TestMenuDismiss()
+{
+    // A fresh press outside the panel closes it...
+    Equal(true, MenuDismiss.ShouldClose(pressed: true, wasUp: true, inside: false), "press outside closes");
+    // ...but a press inside is the panel's own click, a press that was already down when the
+    // panel opened does not, and a released button never does.
+    Equal(false, MenuDismiss.ShouldClose(pressed: true, wasUp: true, inside: true), "press inside keeps it");
+    Equal(false, MenuDismiss.ShouldClose(pressed: true, wasUp: false, inside: false), "held-over press keeps it");
+    Equal(false, MenuDismiss.ShouldClose(pressed: false, wasUp: true, inside: false), "release never closes");
 }
 
 static void TestAccountHistory()
