@@ -8,7 +8,7 @@ public static class Constants
 
     // Monospace; falls back to Consolas/Segoe UI when the font is missing.
     public const string UiFont = "YaHei Consolas Hybrid, Consolas, Segoe UI";
-    public const int DefaultQuotaIntervalSeconds = 180;
+    public const int DefaultQuotaIntervalSeconds = 60;
 
     // Three rows: the 5H and WK bars, then the "15:33 / 5d 7h" line with the state light.
     public const int DefaultWidth = 116;

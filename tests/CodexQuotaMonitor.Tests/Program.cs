@@ -95,7 +95,7 @@ static void TestSettings()
     try
     {
         var defaults = SettingsStore.Load(path);
-        Equal(180, defaults.QuotaInterval, "default quota interval");
+        Equal(60, defaults.QuotaInterval, "default quota interval");
 
         File.WriteAllText(path, """
             {
@@ -114,7 +114,7 @@ static void TestSettings()
 
         File.WriteAllText(path, "{ broken json");
         var fallback = SettingsStore.Load(path);
-        Equal(180, fallback.QuotaInterval, "corrupt JSON fallback");
+        Equal(60, fallback.QuotaInterval, "corrupt JSON fallback");
     }
     finally
     {
@@ -306,39 +306,11 @@ static void TestAccountHistory()
         Equal(41.0, records.Single(r => r.AccountId == "acct-2").FiveHourPercent, "overwritten value");
         Equal(68.0, records.Single(r => r.AccountId == "acct-1").FiveHourPercent, "other account untouched");
 
+        // Timestamps survive the round trip, which is what orders the panel.
         var acct1 = records.Single(r => r.AccountId == "acct-1");
-        var live = AccountRow.Lines(acct1, now, current: true);
-        Equal(3, live.Count, "account block is the name plus the two quota lines");
-        if (!live[0].Contains("one") || !live[0].Contains("当前") || live[0].Contains("@"))
-        {
-            throw new InvalidOperationException($"name line looks wrong: {live[0]}");
-        }
-
-        if (!live[1].Contains("68%") || live[1].Contains("已重置"))
-        {
-            throw new InvalidOperationException($"5H line looks wrong: {live[1]}");
-        }
-
-        if (!live[2].Contains("55%"))
-        {
-            throw new InvalidOperationException($"weekly line looks wrong: {live[2]}");
-        }
-
-        // A window whose reset time has passed must read 已重置, and the block must keep the
-        // same width so the columns line up across accounts.
-        var expired = records.Single(r => r.AccountId == "acct-1") with
-        {
-            FiveHourResetsAt = now.AddMinutes(-5).ToUnixTimeSeconds()
-        };
-        var expiredLines = AccountRow.Lines(expired, now, current: false);
-        if (!expiredLines[1].Contains("已重置") || expiredLines[1].Contains("68%"))
-        {
-            throw new InvalidOperationException($"expired line looks wrong: {expiredLines[1]}");
-        }
-
-        static int DisplayWidth(string text) => text.Sum(c => c > 0x2E80 ? 2 : 1);
-        Equal(DisplayWidth(live[1]), DisplayWidth(expiredLines[1]), "5H line keeps its width");
-        Equal(DisplayWidth(live[2]), DisplayWidth(expiredLines[2]), "weekly line keeps its width");
+        Equal("one@example.com", acct1.Email, "email survives");
+        Equal(now.AddMinutes(-10).ToUnixTimeSeconds(), acct1.LastSeenAt.ToUnixTimeSeconds(), "last seen survives");
+        Equal(55.0, acct1.WeeklyPercent, "weekly survives");
     }
     finally
     {

@@ -124,6 +124,44 @@ public static class Formatting
         return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
     }
 
+    // The right-click panel is drawn by us and always dark, so it has its own fixed palette
+    // instead of following the taskbar's light/dark setting.
+    public static class Popup
+    {
+        public static System.Windows.Media.Color Background => ColorFromHex("#F0141619");
+
+        public static System.Windows.Media.Color Outline => ColorFromHex("#33FFFFFF");
+
+        public static System.Windows.Media.Color Text => ColorFromHex("#F2F4F7");
+
+        public static System.Windows.Media.Color Dim => ColorFromHex("#8B94A1");
+
+        public static System.Windows.Media.Color Accent => ColorFromHex("#7FB2FF");
+
+        public static System.Windows.Media.Color Hover => ColorFromHex("#1FFFFFFF");
+
+        public static System.Windows.Media.Color Track => ColorFromHex("#2EFFFFFF");
+
+        public static System.Windows.Media.Color Ok => ColorFromHex("#2DD4A8");
+
+        public static System.Windows.Media.Color Warn => ColorFromHex("#FFC857");
+
+        public static System.Windows.Media.Color Fail => ColorFromHex("#FF6B81");
+
+        public static System.Windows.Media.Color Idle => ColorFromHex("#8794A2");
+
+        public static System.Windows.Media.Color ColorForRemaining(double? remaining, AppSettings settings)
+        {
+            return remaining switch
+            {
+                null => Idle,
+                var value when value < settings.RedThreshold => Fail,
+                var value when value < settings.AmberThreshold => Warn,
+                _ => Ok
+            };
+        }
+    }
+
     private static bool ReadLightTaskbar()
     {
         try
