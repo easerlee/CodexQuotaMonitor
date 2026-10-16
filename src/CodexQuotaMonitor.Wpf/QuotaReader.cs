@@ -7,28 +7,53 @@ namespace CodexQuotaMonitor.Wpf;
 public sealed class QuotaReader
 {
     private readonly string _codexHome;
-    private readonly string? _codexExe;
+    private readonly string? _configuredExe;
     private readonly SimpleLogger _logger;
+    private string? _codexExe;
 
     public QuotaReader(string codexHome, string? codexExe, SimpleLogger logger)
     {
         _codexHome = codexHome;
+        _configuredExe = codexExe;
         _codexExe = CodexExeFinder.Find(codexExe);
         _logger = logger;
     }
 
-    public string? CodexExe => _codexExe;
+    public string? CodexExe => ResolveExe();
+
+    // The CLI installs itself into a new bin folder on update and deletes the old one, so a
+    // resolved path can go stale while the monitor keeps running. Re-resolve as soon as the
+    // remembered path disappears instead of failing every read until the next restart.
+    private string? ResolveExe()
+    {
+        var cached = _codexExe;
+        var resolved = ResolveExePath(cached, _configuredExe, CodexExeFinder.Find);
+        if (!string.Equals(cached, resolved, StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(resolved))
+        {
+            _logger.Info($"codex.exe re-resolved: {cached ?? "(none)"} -> {resolved}");
+        }
+
+        _codexExe = resolved;
+        return resolved;
+    }
+
+    public static string? ResolveExePath(string? cached, string? configured, Func<string?, string?> find)
+    {
+        return !string.IsNullOrWhiteSpace(cached) && File.Exists(cached) ? cached : find(configured);
+    }
 
     public async Task<QuotaSnapshot> ReadAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_codexExe))
+        var codexExe = ResolveExe();
+        if (string.IsNullOrWhiteSpace(codexExe))
         {
             return new QuotaSnapshot(Error: "codex.exe not found", UpdatedAt: DateTimeOffset.Now);
         }
 
         try
         {
-            var result = await CallAppServerAsync("account/rateLimits/read", null, cancellationToken).ConfigureAwait(false);
+            var result = await CallAppServerAsync(codexExe, "account/rateLimits/read", null, cancellationToken).ConfigureAwait(false);
             return ParseRateLimitResult(result);
         }
         catch (Exception ex)
@@ -61,11 +86,11 @@ public sealed class QuotaReader
             UpdatedAt: DateTimeOffset.Now);
     }
 
-    private async Task<JsonElement> CallAppServerAsync(string method, object? parameters, CancellationToken cancellationToken)
+    private async Task<JsonElement> CallAppServerAsync(string codexExe, string method, object? parameters, CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
         {
-            FileName = _codexExe!,
+            FileName = codexExe,
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,

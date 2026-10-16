@@ -11,6 +11,7 @@ var tests = new (string Name, Action Body)[]
     ("bar geometry ignores the label", TestBarGeometry),
     ("account identity from auth.json", TestAccountIdentity),
     ("account history store and rows", TestAccountHistory),
+    ("stale codex.exe path is re-resolved", TestStaleCodexPath),
     ("autostart registry Run entry", TestAutostartRegistration),
     ("fullscreen detection", TestFullscreenDetector),
     ("argument handling", TestArguments)
@@ -328,6 +329,30 @@ static void TestAccountHistory()
         if (Directory.Exists(directory))
         {
             Directory.Delete(directory, true);
+        }
+    }
+}
+
+static void TestStaleCodexPath()
+{
+    // The CLI moves itself into a new bin folder on update; the monitor must notice that the
+    // path it remembered is gone instead of failing every read until it is restarted.
+    var stale = Path.Combine(Path.GetTempPath(), "cqm-codex-" + Guid.NewGuid().ToString("N") + ".exe");
+    File.WriteAllText(stale, "placeholder");
+    const string fresh = @"C:\Users\example\AppData\Local\OpenAI\Codex\bin\e78bad9887fa50cf\codex.exe";
+    try
+    {
+        Equal(stale, QuotaReader.ResolveExePath(stale, null, _ => fresh), "a path that still exists is kept");
+        File.Delete(stale);
+        Equal(fresh, QuotaReader.ResolveExePath(stale, null, _ => fresh), "a vanished path is re-resolved");
+        Equal<string?>(null, QuotaReader.ResolveExePath(null, null, _ => null), "no candidate stays null");
+        Equal(fresh, QuotaReader.ResolveExePath(null, "configured", _ => fresh), "first read resolves too");
+    }
+    finally
+    {
+        if (File.Exists(stale))
+        {
+            File.Delete(stale);
         }
     }
 }
