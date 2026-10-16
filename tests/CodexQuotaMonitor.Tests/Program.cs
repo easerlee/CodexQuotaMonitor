@@ -19,6 +19,7 @@ var tests = new (string Name, Action Body)[]
 };
 
 var passed = 0;
+var failed = 0;
 foreach (var test in tests)
 {
     try
@@ -29,13 +30,15 @@ foreach (var test in tests)
     }
     catch (Exception ex)
     {
+        // Keep going: one environment-specific failure (a confined sandbox denies the autostart
+        // registry write) must not hide the results of every test after it.
         Console.Error.WriteLine($"FAIL {test.Name}: {ex.Message}");
-        return 1;
+        failed++;
     }
 }
 
-Console.WriteLine($"{passed}/{tests.Length} tests passed");
-return 0;
+Console.WriteLine($"{passed}/{tests.Length} tests passed" + (failed > 0 ? $", {failed} failed" : ""));
+return failed > 0 ? 1 : 0;
 
 static void TestQuotaParsing()
 {
