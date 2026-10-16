@@ -65,3 +65,38 @@ public sealed class AccountHistoryStore
         }
     }
 }
+
+// Panel order: the logged-in account first, then whoever becomes usable soonest. The 5h window
+// is always the earlier of the two, so its reset time decides; a window that already reset (or
+// never started counting) is usable now and sorts above one still running. Accounts with no
+// recorded reset time fall to the bottom.
+public static class AccountOrder
+{
+    public static IReadOnlyList<AccountRecord> Sort(
+        IReadOnlyList<AccountRecord> records,
+        string? currentAccountId,
+        DateTimeOffset now)
+    {
+        return records
+            .OrderByDescending(record => IsCurrent(record, currentAccountId))
+            .ThenBy(record => ResetKey(record, now))
+            .ThenByDescending(record => record.LastSeenAt)
+            .ToList();
+    }
+
+    public static bool IsCurrent(AccountRecord record, string? currentAccountId)
+    {
+        return currentAccountId is not null &&
+            string.Equals(record.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static long ResetKey(AccountRecord record, DateTimeOffset now)
+    {
+        if (record.FiveHourResetsAt is not { } resetsAt)
+        {
+            return long.MaxValue;
+        }
+
+        return Formatting.WindowIsFresh(record.FiveHourPercent, resetsAt, now) ? 0 : resetsAt;
+    }
+}

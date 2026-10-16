@@ -85,16 +85,13 @@ public sealed class QuotaMenu : Border
     {
         _content.Children.Clear();
 
-        var ordered = records
-            .OrderByDescending(record => IsCurrent(record, currentAccountId))
-            .ThenByDescending(record => record.LastSeenAt)
-            .ToList();
+        var now = DateTimeOffset.Now;
+        var ordered = AccountOrder.Sort(records, currentAccountId, now);
         if (ordered.Count == 0)
         {
             _content.Children.Add(Text("还没有账号记录，取数成功后自动记录", Formatting.Popup.Dim, 12));
         }
 
-        var now = DateTimeOffset.Now;
         var valueWidth = MeasureColumn(ordered, now, MinValueWidth, 13, ValueText);
         var resetWidth = MeasureColumn(ordered, now, MinResetWidth, 12, ResetText);
         var first = true;
@@ -106,7 +103,7 @@ public sealed class QuotaMenu : Border
             }
 
             first = false;
-            var current = IsCurrent(record, currentAccountId);
+            var current = AccountOrder.IsCurrent(record, currentAccountId);
             _content.Children.Add(AccountHeader(AccountIdentity.ShortName(record.Email, record.AccountId), current));
             _content.Children.Add(MetricRow("5H", record.FiveHourPercent, record.FiveHourResetsAt, now, settings, weekly: false, valueWidth, resetWidth));
             _content.Children.Add(MetricRow("WK", record.WeeklyPercent, record.WeeklyResetsAt, now, settings, weekly: true, valueWidth, resetWidth));
@@ -119,12 +116,6 @@ public sealed class QuotaMenu : Border
         _content.Children.Add(ActionRow(autostart ? "开机自动启动   ✓" : "开机自动启动", _toggleAutostart, dim: !autostart));
         _content.Children.Add(Divider());
         _content.Children.Add(ActionRow("退出", _exit, danger: true));
-    }
-
-    private static bool IsCurrent(AccountRecord record, string? currentAccountId)
-    {
-        return currentAccountId is not null &&
-            string.Equals(record.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase);
     }
 
     private static UIElement AccountHeader(string name, bool current)

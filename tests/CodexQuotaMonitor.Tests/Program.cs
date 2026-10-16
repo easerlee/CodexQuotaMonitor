@@ -11,6 +11,7 @@ var tests = new (string Name, Action Body)[]
     ("bar geometry ignores the label", TestBarGeometry),
     ("account identity from auth.json", TestAccountIdentity),
     ("account history store and rows", TestAccountHistory),
+    ("panel account order", TestAccountOrder),
     ("stale codex.exe path is re-resolved", TestStaleCodexPath),
     ("autostart registry Run entry", TestAutostartRegistration),
     ("fullscreen detection", TestFullscreenDetector),
@@ -285,6 +286,44 @@ static void TestAccountIdentity()
     var idOnly = AccountIdentity.Parse(
         JsonSerializer.Serialize(new { tokens = new { account_id = "abc123" } }));
     Equal("abc123", idOnly?.Display, "display falls back to the id");
+}
+
+static void TestAccountOrder()
+{
+    var now = DateTimeOffset.Now;
+    AccountRecord Record(string id, double? percent, long? resetsIn, DateTimeOffset? seen = null)
+    {
+        return new AccountRecord(
+            id,
+            id + "@example.com",
+            "plus",
+            seen ?? now.AddMinutes(-5),
+            percent,
+            resetsIn,
+            50,
+            now.AddDays(3).ToUnixTimeSeconds());
+    }
+
+    var running = Record("running", 40, now.AddHours(4).ToUnixTimeSeconds(), now);
+    var soon = Record("soon", 80, now.AddHours(1).ToUnixTimeSeconds(), now.AddMinutes(-30));
+    var alreadyReset = Record("already", 0, now.AddMinutes(-10).ToUnixTimeSeconds(), now.AddMinutes(-60));
+    var full = Record("full", 100, now.AddHours(5).ToUnixTimeSeconds(), now.AddMinutes(-90));
+    var unknown = Record("unknown", null, null, now.AddMinutes(-120));
+
+    // Current account wins regardless of its own reset time; the rest go by whoever frees up
+    // first, a window that already reset or never started counting reading as usable now.
+    var ordered = AccountOrder.Sort([running, unknown, soon, alreadyReset, full], "running", now);
+    Equal("running", ordered[0].AccountId, "current account is first");
+    Equal("already", ordered[1].AccountId, "an expired window comes next");
+    Equal("full", ordered[2].AccountId, "a full window is usable now too");
+    Equal("soon", ordered[3].AccountId, "then the nearest reset time");
+    Equal("unknown", ordered[4].AccountId, "no reset time falls to the bottom");
+
+    // Ties fall back to the most recently read account.
+    var tieA = Record("tie-a", 30, now.AddHours(2).ToUnixTimeSeconds(), now.AddMinutes(-20));
+    var tieB = Record("tie-b", 30, now.AddHours(2).ToUnixTimeSeconds(), now.AddMinutes(-1));
+    var tied = AccountOrder.Sort([tieA, tieB], null, now);
+    Equal("tie-b", tied[0].AccountId, "ties break on the latest reading");
 }
 
 static void TestAccountHistory()

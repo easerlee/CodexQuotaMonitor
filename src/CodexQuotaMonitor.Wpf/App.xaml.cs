@@ -14,6 +14,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += OnUnhandledException;
 
         AppPaths paths;
         CliOptions options;
@@ -82,6 +83,13 @@ public partial class App : System.Windows.Application
             Console.Error.WriteLine($"startup failed: {ex.Message}");
             Shutdown(2);
         }
+    }
+
+    // A background overlay must never die silently: leave the reason in the log before going.
+    private void OnUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        _logger?.Error("unhandled exception", e.Exception);
+        e.Handled = false;
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
