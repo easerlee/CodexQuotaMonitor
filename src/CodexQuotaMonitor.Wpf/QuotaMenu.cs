@@ -21,9 +21,13 @@ namespace CodexQuotaMonitor.Wpf;
 // (label, bar, percentage, reset time) plus the handful of settings the monitor has.
 public sealed class QuotaMenu : Border
 {
+    // Column widths are sized to the widest thing that can land in them: "100%" or the much
+    // wider "已重置" in the value column, and the longest countdown ("6d 22h", "23h 59m") or
+    // "--:--" in the reset column. Too narrow and the right-aligned value gets pushed left,
+    // over the bar.
     private const double LabelWidth = 26;
     private const double BarWidth = 66;
-    private const double ValueWidth = 42;
+    private const double ValueWidth = 56;
     private const double ResetWidth = 58;
 
     private static readonly FontFamily UiFont = new(Constants.UiFont);
@@ -174,6 +178,8 @@ public sealed class QuotaMenu : Border
             13);
         valueText.VerticalAlignment = VerticalAlignment.Center;
         valueText.HorizontalAlignment = HorizontalAlignment.Right;
+        valueText.TextAlignment = TextAlignment.Right;
+        valueText.TextTrimming = TextTrimming.CharacterEllipsis;
         valueText.FontWeight = FontWeights.SemiBold;
         valueText.Margin = new Thickness(0, 0, 8, 0);
         Grid.SetColumn(valueText, 2);
@@ -184,6 +190,7 @@ public sealed class QuotaMenu : Border
             Formatting.Popup.Dim,
             12);
         resetText.VerticalAlignment = VerticalAlignment.Center;
+        resetText.TextTrimming = TextTrimming.CharacterEllipsis;
         Grid.SetColumn(resetText, 3);
         row.Children.Add(resetText);
 
