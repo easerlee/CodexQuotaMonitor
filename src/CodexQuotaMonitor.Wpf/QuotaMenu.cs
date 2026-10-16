@@ -63,7 +63,15 @@ public sealed class QuotaMenu : Border
             Opacity = 0.55,
             Color = Colors.Black
         };
-        Child = _content;
+        // The panel grows with the number of accounts; keep it inside the screen and let it
+        // scroll instead of running off the top edge.
+        MaxHeight = Math.Max(240, SystemParameters.WorkArea.Height - 80);
+        Child = new ScrollViewer
+        {
+            Content = _content,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
     }
 
     // Rebuilt on every open, so the numbers and check marks are never stale. The logged-in
@@ -107,6 +115,7 @@ public sealed class QuotaMenu : Border
         _content.Children.Add(Divider());
         _content.Children.Add(IntervalRow(settings.QuotaInterval));
         _content.Children.Add(ActionRow("立即刷新", _refresh));
+        _content.Children.Add(Divider());
         _content.Children.Add(ActionRow(autostart ? "开机自动启动   ✓" : "开机自动启动", _toggleAutostart, dim: !autostart));
         _content.Children.Add(Divider());
         _content.Children.Add(ActionRow("退出", _exit, danger: true));
@@ -295,7 +304,7 @@ public sealed class QuotaMenu : Border
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5, 8, 5),
+            Padding = new Thickness(8, 8, 8, 8),
             Margin = new Thickness(-8, 0, -8, 0),
             Cursor = Cursors.Hand,
             Background = Brushes.Transparent,
@@ -309,7 +318,7 @@ public sealed class QuotaMenu : Border
 
     private UIElement IntervalRow(int currentSeconds)
     {
-        var row = new Grid { Margin = new Thickness(0, 6, 0, 2) };
+        var row = new Grid { Margin = new Thickness(0, 9, 0, 6) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth + BarWidth) });
         // Star so the pills can be pushed flush against the panel's right edge.
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
