@@ -140,7 +140,8 @@ public static class Formatting
 
         public static System.Windows.Media.Color Hover => ColorFromHex("#1FFFFFFF");
 
-        public static System.Windows.Media.Color Track => ColorFromHex("#2EFFFFFF");
+        // Dim enough that an empty bar reads as empty rather than as a full grey one.
+        public static System.Windows.Media.Color Track => ColorFromHex("#1CFFFFFF");
 
         public static System.Windows.Media.Color Ok => ColorFromHex("#2DD4A8");
 
