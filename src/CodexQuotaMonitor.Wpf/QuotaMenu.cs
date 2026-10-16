@@ -287,14 +287,16 @@ public sealed class QuotaMenu : Border
         return host;
     }
 
-    // Rows line up with the metric labels: no horizontal padding, so the text starts at the
-    // same x as 5H and the hover highlight still spans the panel.
+    // Rows line up with the metric labels: the negative margin pulls the hover highlight out
+    // past the content edge while the padding pushes the text back to the same x as 5H, so the
+    // text keeps its column and the highlight still has a margin around it.
     private static UIElement ActionRow(string text, Action action, bool danger = false, bool dim = false)
     {
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(0, 5, 0, 5),
+            Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(-8, 0, -8, 0),
             Cursor = Cursors.Hand,
             Background = Brushes.Transparent,
             Child = Text(text, dim ? Formatting.Popup.Dim : danger ? Formatting.Popup.Fail : Formatting.Popup.Text, 12.5)
