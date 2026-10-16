@@ -112,7 +112,6 @@ public partial class MainWindow : Window
     {
         _menu = new QuotaMenu(
             () => RunFromMenu(RefreshNow),
-            () => RunFromMenu(SnapToTaskbar),
             () => RunFromMenu(ToggleAutostart),
             seconds => RunFromMenu(() => SetQuotaInterval(seconds)),
             RequestExit);
@@ -160,7 +159,7 @@ public partial class MainWindow : Window
         }
 
         _menu.Populate(
-            _accountHistory.Load().OrderByDescending(record => record.LastSeenAt).ToList(),
+            _accountHistory.Load(),
             AccountIdentity.Read(_codexHome)?.Id,
             _settings,
             StartupRegistration.IsEnabled());

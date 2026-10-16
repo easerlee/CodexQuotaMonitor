@@ -30,20 +30,17 @@ public sealed class QuotaMenu : Border
 
     private readonly StackPanel _content = new();
     private readonly Action _refresh;
-    private readonly Action _resnap;
     private readonly Action _toggleAutostart;
     private readonly Action<int> _setInterval;
     private readonly Action _exit;
 
     public QuotaMenu(
         Action refresh,
-        Action resnap,
         Action toggleAutostart,
         Action<int> setInterval,
         Action exit)
     {
         _refresh = refresh;
-        _resnap = resnap;
         _toggleAutostart = toggleAutostart;
         _setInterval = setInterval;
         _exit = exit;
@@ -64,7 +61,9 @@ public sealed class QuotaMenu : Border
         Child = _content;
     }
 
-    // Rebuilt on every open, so the numbers and check marks are never stale.
+    // Rebuilt on every open, so the numbers and check marks are never stale. The logged-in
+    // account leads the list and is the only one with a green light, matching the overlay's
+    // own status semantics.
     public void Populate(
         IReadOnlyList<AccountRecord> records,
         string? currentAccountId,
@@ -73,14 +72,18 @@ public sealed class QuotaMenu : Border
     {
         _content.Children.Clear();
 
-        if (records.Count == 0)
+        var ordered = records
+            .OrderByDescending(record => IsCurrent(record, currentAccountId))
+            .ThenByDescending(record => record.LastSeenAt)
+            .ToList();
+        if (ordered.Count == 0)
         {
             _content.Children.Add(Text("还没有账号记录，取数成功后自动记录", Formatting.Popup.Dim, 12));
         }
 
         var now = DateTimeOffset.Now;
         var first = true;
-        foreach (var record in records)
+        foreach (var record in ordered)
         {
             if (!first)
             {
@@ -88,20 +91,24 @@ public sealed class QuotaMenu : Border
             }
 
             first = false;
-            var current = currentAccountId is not null &&
-                string.Equals(record.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase);
+            var current = IsCurrent(record, currentAccountId);
             _content.Children.Add(AccountHeader(AccountIdentity.ShortName(record.Email, record.AccountId), current));
             _content.Children.Add(MetricRow("5H", record.FiveHourPercent, record.FiveHourResetsAt, now, settings, weekly: false));
             _content.Children.Add(MetricRow("WK", record.WeeklyPercent, record.WeeklyResetsAt, now, settings, weekly: true));
         }
 
         _content.Children.Add(Divider());
-        _content.Children.Add(ActionRow("立即刷新", _refresh));
-        _content.Children.Add(ActionRow("重新贴靠到托盘左侧", _resnap));
-        _content.Children.Add(ActionRow(autostart ? "开机自动启动   ✓" : "开机自动启动", _toggleAutostart, dim: !autostart));
         _content.Children.Add(IntervalRow(settings.QuotaInterval));
+        _content.Children.Add(ActionRow("立即刷新", _refresh));
+        _content.Children.Add(ActionRow(autostart ? "开机自动启动   ✓" : "开机自动启动", _toggleAutostart, dim: !autostart));
         _content.Children.Add(Divider());
         _content.Children.Add(ActionRow("退出", _exit, danger: true));
+    }
+
+    private static bool IsCurrent(AccountRecord record, string? currentAccountId)
+    {
+        return currentAccountId is not null &&
+            string.Equals(record.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase);
     }
 
     private static UIElement AccountHeader(string name, bool current)
@@ -117,7 +124,9 @@ public sealed class QuotaMenu : Border
             Height = 7,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0),
-            Fill = new SolidColorBrush(current ? Formatting.Popup.Accent : Formatting.Popup.Idle)
+            // Same reading as the overlay's status light: green means it is the live account,
+            // grey means the reading is frozen because it is not logged in any more.
+            Fill = new SolidColorBrush(current ? Formatting.Popup.Ok : Formatting.Popup.Idle)
         });
         row.Children.Add(new TextBlock
         {
@@ -128,19 +137,6 @@ public sealed class QuotaMenu : Border
             Foreground = new SolidColorBrush(Formatting.Popup.Text),
             VerticalAlignment = VerticalAlignment.Center
         });
-
-        if (current)
-        {
-            row.Children.Add(new TextBlock
-            {
-                Text = "← 当前",
-                FontFamily = UiFont,
-                FontSize = 11,
-                Margin = new Thickness(10, 0, 0, 0),
-                Foreground = new SolidColorBrush(Formatting.Popup.Accent),
-                VerticalAlignment = VerticalAlignment.Center
-            });
-        }
 
         return row;
     }
@@ -232,12 +228,14 @@ public sealed class QuotaMenu : Border
         return host;
     }
 
+    // Rows line up with the metric labels: no horizontal padding, so the text starts at the
+    // same x as 5H and the hover highlight still spans the panel.
     private static UIElement ActionRow(string text, Action action, bool danger = false, bool dim = false)
     {
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5, 8, 5),
+            Padding = new Thickness(0, 5, 0, 5),
             Cursor = Cursors.Hand,
             Background = Brushes.Transparent,
             Child = Text(text, dim ? Formatting.Popup.Dim : danger ? Formatting.Popup.Fail : Formatting.Popup.Text, 12.5)
@@ -254,7 +252,7 @@ public sealed class QuotaMenu : Border
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth + BarWidth) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var label = Text("刷新间隔", Formatting.Popup.Dim, 12);
+        var label = Text("刷新间隔", Formatting.Popup.Text, 12.5);
         label.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(label, 0);
         row.Children.Add(label);
