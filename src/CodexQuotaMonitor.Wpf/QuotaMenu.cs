@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -31,6 +30,10 @@ public sealed class QuotaMenu : Border
     private const double MinValueWidth = 30;
     private const double MinResetWidth = 40;
 
+    // Every row insets itself by this much, so the text keeps the 5H column while a row's hover
+    // plate - which spans the row's whole box - still has this margin on both sides of the text.
+    private const double RowInset = 12;
+
     private static readonly FontFamily UiFont = new(Constants.UiFont);
 
     private readonly StackPanel _content = new();
@@ -57,15 +60,13 @@ public sealed class QuotaMenu : Border
         BorderBrush = new SolidColorBrush(Formatting.Popup.Outline);
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(12);
-        Padding = new Thickness(16, 12, 16, 12);
-        Effect = new DropShadowEffect
-        {
-            BlurRadius = 22,
-            ShadowDepth = 5,
-            Direction = 270,
-            Opacity = 0.55,
-            Color = Colors.Black
-        };
+        // The horizontal inset lives on the rows rather than here: the scroll viewer clips its
+        // content at its own edge, so a hover plate can never be drawn into this padding. With
+        // 4px here and 12px on the rows, the rows' plates span the full viewport and still leave
+        // the text on the 5H column.
+        Padding = new Thickness(4, 12, 4, 12);
+        // No drop shadow: it darkened the desktop around the rounded corners, which read as a
+        // grey block behind the card instead of a transparent corner.
         // The panel grows with the number of accounts; keep it inside the screen and let it
         // scroll instead of running off the top edge.
         MaxHeight = Math.Max(240, SystemParameters.WorkArea.Height - 80);
@@ -92,7 +93,9 @@ public sealed class QuotaMenu : Border
         var ordered = AccountOrder.Sort(records, currentAccountId, now);
         if (ordered.Count == 0)
         {
-            _content.Children.Add(Text("还没有账号记录，取数成功后自动记录", Formatting.Popup.Dim, 12));
+            var empty = Text("还没有账号记录，取数成功后自动记录", Formatting.Popup.Dim, 12);
+            empty.Margin = new Thickness(RowInset, 0, RowInset, 0);
+            _content.Children.Add(empty);
         }
 
         var valueWidth = MeasureColumn(ordered, now, MinValueWidth, 13, ValueText);
@@ -114,7 +117,7 @@ public sealed class QuotaMenu : Border
 
         _content.Children.Add(Divider());
         _content.Children.Add(IntervalRow(settings.QuotaInterval));
-        _content.Children.Add(ActionRow("立即刷新", _refresh));
+        _content.Children.Add(ActionRow("刷新（或点状态栏数据）", _refresh));
         _content.Children.Add(Divider());
         _content.Children.Add(DisplaySideRow(settings.DisplayLeft));
         _content.Children.Add(AutostartRow(autostart));
@@ -127,7 +130,7 @@ public sealed class QuotaMenu : Border
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 6, 0, 4)
+            Margin = new Thickness(RowInset, 6, RowInset, 4)
         };
         row.Children.Add(new Ellipse
         {
@@ -165,7 +168,7 @@ public sealed class QuotaMenu : Border
         var fresh = Formatting.WindowIsFresh(percent, resetsAt, now);
         var color = Formatting.Popup.ColorForRemaining(percent, settings);
 
-        var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+        var row = new Grid { Margin = new Thickness(RowInset, 2, RowInset, 2) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(BarWidth) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(valueWidth) });
@@ -291,16 +294,15 @@ public sealed class QuotaMenu : Border
         return host;
     }
 
-    // Rows line up with the metric labels: the negative margin pulls the hover highlight out
-    // past the content edge while the padding pushes the text back to the same x as 5H, so the
-    // text keeps its column and the highlight keeps a 12px margin around the text.
+    // Rows line up with the metric labels: the row spans the whole viewport and insets its own
+    // content by RowInset, so the text keeps its column and the hover plate - the row's own
+    // background - gets that same margin on both sides of the text.
     private static UIElement ActionRow(string text, Action action, bool danger = false, bool dim = false)
     {
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(-12, 0, -12, 0),
+            Padding = new Thickness(RowInset, 8, RowInset, 8),
             Cursor = Cursors.Hand,
             Background = Brushes.Transparent,
             Child = Text(text, dim ? Formatting.Popup.Dim : danger ? Formatting.Popup.Fail : Formatting.Popup.Text, 12.5)
@@ -315,7 +317,7 @@ public sealed class QuotaMenu : Border
     // control is flush right, on the same edge as the reset time column above it.
     private static UIElement SettingRow(string label, FrameworkElement control)
     {
-        var row = new Grid { Margin = new Thickness(0, 9, 0, 6) };
+        var row = new Grid { Margin = new Thickness(RowInset, 9, RowInset, 6) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth + BarWidth) });
         // Star so the control can be pushed flush against the panel's right edge.
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -377,8 +379,7 @@ public sealed class QuotaMenu : Border
         var row = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 8, 8, 8),
-            Margin = new Thickness(-8, 0, -8, 0),
+            Padding = new Thickness(RowInset, 8, RowInset, 8),
             Cursor = Cursors.Hand,
             // No hover plate on this row: the switch itself is the whole affordance.
             Background = Brushes.Transparent,
@@ -418,7 +419,7 @@ public sealed class QuotaMenu : Border
         return new Border
         {
             Height = 1,
-            Margin = new Thickness(0, 8, 0, 8),
+            Margin = new Thickness(RowInset, 8, RowInset, 8),
             Background = new SolidColorBrush(Formatting.Popup.Outline)
         };
     }
