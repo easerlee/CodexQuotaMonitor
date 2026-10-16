@@ -100,17 +100,23 @@ static void TestSettings()
     {
         var defaults = SettingsStore.Load(path);
         Equal(60, defaults.QuotaInterval, "default quota interval");
+        Equal(false, defaults.DisplayLeft, "display side defaults to the tray side");
 
         File.WriteAllText(path, """
             {
               "quota_interval": 60,
               "red_threshold": 10,
-              "amber_threshold": 25
+              "amber_threshold": 25,
+              "display_side": "left"
             }
             """);
         var loaded = SettingsStore.Load(path);
         Equal(60, loaded.QuotaInterval, "loaded quota interval");
         Equal(25.0, loaded.AmberThreshold, "loaded amber threshold");
+        Equal(true, loaded.DisplayLeft, "loaded display side");
+
+        File.WriteAllText(path, """{ "quota_interval": 60, "display_side": "sideways" }""");
+        Equal(false, SettingsStore.Load(path).DisplayLeft, "an unknown display side falls back to the tray side");
 
         var cli = CliOptions.Parse(["--quota-interval", "300"]);
         var merged = SettingsStore.ApplyCliOverrides(loaded, cli);
@@ -176,6 +182,28 @@ static void TestTaskbarPlacement()
 
     var noRoomForTrayAnchor = TaskbarPlacementCalculator.Compute(3, bottomRect, 260, 48, 1920, 1080, 100);
     Equal(new TaskbarPlacement(0, 1032, 260, 48), noRoomForTrayAnchor, "tray anchor falls back to taskbar left");
+
+    // 显示位置 = 左 parks the card at the taskbar's own left end (the empty one on a Windows 11
+    // centre-aligned taskbar) instead of beside the notification area.
+    var pinnedLeft = TaskbarPlacementCalculator.Compute(3, bottomRect, 260, 48, 1920, 1080, 1500, pinLeft: true);
+    Equal(
+        new TaskbarPlacement(TaskbarPlacementCalculator.TrayGap, 1032, 260, 48),
+        pinnedLeft,
+        "left display side sits at the taskbar's left end");
+
+    var pinnedLeftInsetTaskbar = TaskbarPlacementCalculator.Compute(
+        3,
+        new NativeMethods.RECT { Left = 1920, Top = 1032, Right = 3840, Bottom = 1080 },
+        260,
+        48,
+        3840,
+        1080,
+        3420,
+        pinLeft: true);
+    Equal(
+        new TaskbarPlacement(1920 + TaskbarPlacementCalculator.TrayGap, 1032, 260, 48),
+        pinnedLeftInsetTaskbar,
+        "left display side follows the taskbar's own left edge");
 }
 
 static void TestAutostartRegistration()

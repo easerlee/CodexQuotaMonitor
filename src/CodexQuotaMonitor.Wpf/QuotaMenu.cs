@@ -35,19 +35,22 @@ public sealed class QuotaMenu : Border
 
     private readonly StackPanel _content = new();
     private readonly Action _refresh;
-    private readonly Action _toggleAutostart;
+    private readonly Func<bool> _toggleAutostart;
     private readonly Action<int> _setInterval;
+    private readonly Action<string> _setDisplaySide;
     private readonly Action _exit;
 
     public QuotaMenu(
         Action refresh,
-        Action toggleAutostart,
+        Func<bool> toggleAutostart,
         Action<int> setInterval,
+        Action<string> setDisplaySide,
         Action exit)
     {
         _refresh = refresh;
         _toggleAutostart = toggleAutostart;
         _setInterval = setInterval;
+        _setDisplaySide = setDisplaySide;
         _exit = exit;
 
         Background = new SolidColorBrush(Formatting.Popup.Background);
@@ -74,7 +77,7 @@ public sealed class QuotaMenu : Border
         };
     }
 
-    // Rebuilt on every open, so the numbers and check marks are never stale. The logged-in
+    // Rebuilt on every open, so the numbers and switch states are never stale. The logged-in
     // account leads the list and is the only one with a green light, matching the overlay's
     // own status semantics.
     public void Populate(
@@ -113,7 +116,8 @@ public sealed class QuotaMenu : Border
         _content.Children.Add(IntervalRow(settings.QuotaInterval));
         _content.Children.Add(ActionRow("立即刷新", _refresh));
         _content.Children.Add(Divider());
-        _content.Children.Add(ActionRow(autostart ? "开机自动启动   ✓" : "开机自动启动", _toggleAutostart, dim: !autostart));
+        _content.Children.Add(DisplaySideRow(settings.DisplayLeft));
+        _content.Children.Add(AutostartRow(autostart));
         _content.Children.Add(Divider());
         _content.Children.Add(ActionRow("退出", _exit, danger: true));
     }
@@ -307,53 +311,87 @@ public sealed class QuotaMenu : Border
         return row;
     }
 
-    private UIElement IntervalRow(int currentSeconds)
+    // 刷新间隔 and 显示位置 share one shape: the label sits in the 5H column and the sliding
+    // control is flush right, on the same edge as the reset time column above it.
+    private static UIElement SettingRow(string label, FrameworkElement control)
     {
         var row = new Grid { Margin = new Thickness(0, 9, 0, 6) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth + BarWidth) });
-        // Star so the pills can be pushed flush against the panel's right edge.
+        // Star so the control can be pushed flush against the panel's right edge.
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var label = Text("刷新间隔", Formatting.Popup.Text, 12.5);
+        var text = Text(label, Formatting.Popup.Text, 12.5);
+        text.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(text, 0);
+        row.Children.Add(text);
+
+        control.HorizontalAlignment = HorizontalAlignment.Right;
+        control.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(control, 1);
+        row.Children.Add(control);
+        return row;
+    }
+
+    private UIElement IntervalRow(int currentSeconds)
+    {
+        var offered = OfferedIntervals(currentSeconds);
+        // The slide is the feedback, so this row must not close the panel the way a command row
+        // does: the callback only saves the choice, and the panel is rebuilt on its next open.
+        return SettingRow(
+            "刷新间隔",
+            new SegmentedControl(
+                offered.Select(seconds => (seconds / 60).ToString()).ToList(),
+                offered.IndexOf(currentSeconds),
+                index => _setInterval(offered[index])));
+    }
+
+    private UIElement DisplaySideRow(bool left)
+    {
+        return SettingRow(
+            "显示位置",
+            new SegmentedControl(["左", "右"], left ? 0 : 1, index => _setDisplaySide(index == 0 ? "left" : "right")));
+    }
+
+    // The autostart row keeps the hover plate and the label column of the rows above, but ends
+    // in a switch instead of a check mark. The switch takes the state the registry actually
+    // ended up in rather than assuming the write worked, and the panel stays open so the knob
+    // is seen moving.
+    private UIElement AutostartRow(bool autostart)
+    {
+        var toggle = new ToggleSwitch(autostart);
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth + BarWidth) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var label = Text("开机自动启动", Formatting.Popup.Text, 12.5);
         label.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(label, 0);
-        row.Children.Add(label);
+        grid.Children.Add(label);
 
-        var pills = new StackPanel
+        toggle.HorizontalAlignment = HorizontalAlignment.Right;
+        toggle.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(toggle, 1);
+        grid.Children.Add(toggle);
+
+        var row = new Border
         {
-            Orientation = Orientation.Horizontal,
-            // Flush right, so the last pill's frame ends on the same edge as the reset column.
-            HorizontalAlignment = HorizontalAlignment.Right
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 8, 8, 8),
+            Margin = new Thickness(-8, 0, -8, 0),
+            Cursor = Cursors.Hand,
+            Background = Brushes.Transparent,
+            Child = grid
         };
-        var first = true;
-        foreach (var seconds in OfferedIntervals(currentSeconds))
-        {
-            var active = seconds == currentSeconds;
-            var pill = new Border
-            {
-                CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(7, 2, 7, 2),
-                // Gap on the left of every pill except the first: no trailing gap, which would
-                // pull the last pill's frame off the right edge.
-                Margin = new Thickness(first ? 0 : 4, 0, 0, 0),
-                Cursor = Cursors.Hand,
-                Background = new SolidColorBrush(active ? Formatting.Popup.Accent : Formatting.Popup.Track),
-                Child = Text(seconds / 60 + "", active ? Formatting.Popup.Background : Formatting.Popup.Text, 11.5)
-            };
-            var captured = seconds;
-            pill.MouseLeftButtonUp += (_, _) => _setInterval(captured);
-            pills.Children.Add(pill);
-            first = false;
-        }
-
-        Grid.SetColumn(pills, 1);
-        row.Children.Add(pills);
+        row.MouseEnter += (_, _) => row.Background = new SolidColorBrush(Formatting.Popup.Hover);
+        row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
+        row.MouseLeftButtonUp += (_, _) => toggle.Set(_toggleAutostart());
         return row;
     }
 
     // 1/5/15 minutes, plus whatever is active right now if it came from elsewhere (a value
     // saved by an older build or --quota-interval), so a choice is always highlighted.
-    private static IReadOnlyList<int> OfferedIntervals(int currentSeconds)
+    private static List<int> OfferedIntervals(int currentSeconds)
     {
         var offered = new List<int> { 60, 300, 900 };
         if (currentSeconds > 0 && !offered.Contains(currentSeconds))

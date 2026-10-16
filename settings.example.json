@@ -1,5 +1,6 @@
 {
   "quota_interval": 180,
   "red_threshold": 15.0,
-  "amber_threshold": 30.0
+  "amber_threshold": 30.0,
+  "display_side": "right"
 }

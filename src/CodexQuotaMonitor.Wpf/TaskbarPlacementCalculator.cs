@@ -17,18 +17,23 @@ public static class TaskbarPlacementCalculator
         int fallbackHeight,
         int screenWidth,
         int screenHeight,
-        int trayLeftEdge = 0)
+        int trayLeftEdge = 0,
+        bool pinLeft = false)
     {
         if (edge is EdgeTop or EdgeBottom && taskbar.Width > 0 && taskbar.Height > 0)
         {
             var width = Math.Min(Math.Max(1, preferredWidth), taskbar.Width);
 
-            // Sit immediately left of the notification area so a left-aligned taskbar
-            // keeps its Start button clear. Fall back to the taskbar's own left edge
-            // when the tray geometry is unknown or leaves no room.
-            var x = trayLeftEdge > taskbar.Left + width + TrayGap
-                ? trayLeftEdge - width - TrayGap
-                : taskbar.Left;
+            // The tray side (default) sits immediately left of the notification area so a
+            // left-aligned taskbar keeps its Start button clear; the left side is the taskbar's
+            // own far end, which is the empty one on a Windows 11 centre-aligned taskbar. The
+            // tray anchor also falls back to the taskbar's left edge when the tray geometry is
+            // unknown or leaves no room.
+            var x = pinLeft
+                ? taskbar.Left + TrayGap
+                : trayLeftEdge > taskbar.Left + width + TrayGap
+                    ? trayLeftEdge - width - TrayGap
+                    : taskbar.Left;
 
             return Clamp(new TaskbarPlacement(x, taskbar.Top, width, taskbar.Height), screenWidth, screenHeight);
         }

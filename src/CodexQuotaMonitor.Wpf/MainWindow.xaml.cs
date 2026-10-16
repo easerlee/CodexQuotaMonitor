@@ -108,12 +108,15 @@ public partial class MainWindow : Window
 
     // The panel is a WPF popup rather than a system menu so it can be the dark rounded card
     // the design calls for. StaysOpen=false gives the usual click-anywhere-to-dismiss.
+    // Only the command rows close it: the three settings rows answer with a sliding control,
+    // so the panel has to stay open for that movement to be seen.
     private void BuildMenu()
     {
         _menu = new QuotaMenu(
             () => RunFromMenu(RefreshNow),
-            () => RunFromMenu(ToggleAutostart),
-            seconds => RunFromMenu(() => SetQuotaInterval(seconds)),
+            ToggleAutostart,
+            SetQuotaInterval,
+            SetDisplaySide,
             RequestExit);
         _popup.PlacementTarget = this;
         _popup.Placement = PlacementMode.Custom;
@@ -167,9 +170,12 @@ public partial class MainWindow : Window
         _popup.IsOpen = true;
     }
 
-    private void ToggleAutostart()
+    // Returns the state the registry ended up in, so the switch shows the truth rather than
+    // what the click intended.
+    private bool ToggleAutostart()
     {
         StartupRegistration.SetEnabled(!StartupRegistration.IsEnabled(), _logger);
+        return StartupRegistration.IsEnabled();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -383,6 +389,16 @@ public partial class MainWindow : Window
         UpdateTitle();
     }
 
+    // Moving the card is the whole point of this setting, so apply it on the spot instead of
+    // waiting for the next placement tick to notice the new value.
+    private void SetDisplaySide(string side)
+    {
+        _settings.DisplaySide = side;
+        _settings.Normalize();
+        SettingsStore.Save(_paths.SettingsPath, _settings, _logger);
+        SnapToTaskbar();
+    }
+
     // The overlay belongs to the taskbar strip: it stays with the taskbar and gets out of
     // the way while a fullscreen application owns the screen.
     private void UpdateOverlayVisibility()
@@ -456,7 +472,7 @@ public partial class MainWindow : Window
             NativeMethods.AttachToTaskbar(_hwnd);
         }
 
-        var placement = ResolveTaskbarPlacement(Constants.DefaultWidth);
+        var placement = ResolveTaskbarPlacement(Constants.DefaultWidth, _settings.DisplayLeft);
         if (_hwnd == IntPtr.Zero)
         {
             Left = placement.X;
@@ -474,7 +490,7 @@ public partial class MainWindow : Window
         NativeMethods.SetTopmostPosition(_hwnd, placement.X, placement.Y, placement.Width, placement.Height);
     }
 
-    public static TaskbarPlacement ResolveTaskbarPlacement(int preferredWidth)
+    public static TaskbarPlacement ResolveTaskbarPlacement(int preferredWidth, bool pinLeft = false)
     {
         var bounds = Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(
             0,
@@ -491,7 +507,8 @@ public partial class MainWindow : Window
                 Constants.DefaultHeight,
                 bounds.Width,
                 bounds.Height,
-                trayLeft);
+                trayLeft,
+                pinLeft);
         }
 
         return TaskbarPlacementCalculator.Fallback(preferredWidth, Constants.DefaultHeight, bounds.Width, bounds.Height);

@@ -14,11 +14,21 @@ public sealed class AppSettings
     [JsonPropertyName("amber_threshold")]
     public double AmberThreshold { get; set; } = Constants.DefaultAmberThreshold;
 
+    // Which end of the taskbar the overlay is parked at: "right" is immediately left of the
+    // notification area (the tray side, and what every earlier build did), "left" is the
+    // taskbar's own far left - the empty end on a Windows 11 centre-aligned taskbar.
+    [JsonPropertyName("display_side")]
+    public string DisplaySide { get; set; } = "right";
+
+    [JsonIgnore]
+    public bool DisplayLeft => string.Equals(DisplaySide, "left", StringComparison.OrdinalIgnoreCase);
+
     public AppSettings Clone() => new()
     {
         QuotaInterval = QuotaInterval,
         RedThreshold = RedThreshold,
-        AmberThreshold = AmberThreshold
+        AmberThreshold = AmberThreshold,
+        DisplaySide = DisplaySide
     };
 
     public void Normalize()
@@ -26,6 +36,9 @@ public sealed class AppSettings
         QuotaInterval = Math.Max(30, QuotaInterval);
         RedThreshold = Math.Clamp(RedThreshold, 0.0, 100.0);
         AmberThreshold = Math.Clamp(AmberThreshold, RedThreshold, 100.0);
+        // Anything that is not "left" means the tray side, so a hand-edited or unknown value
+        // still parks the card somewhere sensible.
+        DisplaySide = DisplayLeft ? "left" : "right";
     }
 }
 
