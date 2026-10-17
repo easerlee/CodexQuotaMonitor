@@ -137,6 +137,7 @@ public partial class MainWindow : Window
             // The panel is opened by a button release, so the next press is a fresh one.
             _menuButtonWasUp = true;
             _menuGuardTimer.Start();
+            RaisePanelAboveOverlay();
             ForceTopmost();
         };
         _popup.Closed += (_, _) =>
@@ -145,6 +146,18 @@ public partial class MainWindow : Window
             _menuGuardTimer.Stop();
             ForceTopmost();
         };
+    }
+
+    // The overlay window is topmost, so the panel has to be raised as well: a plain popup would
+    // otherwise be drawn underneath the card wherever the two overlap.
+    private void RaisePanelAboveOverlay()
+    {
+        if (_menu is null || PresentationSource.FromVisual(_menu) is not HwndSource source)
+        {
+            return;
+        }
+
+        NativeMethods.SetTopmostNoActivate(source.Handle);
     }
 
     private void CheckMenuDismiss()
